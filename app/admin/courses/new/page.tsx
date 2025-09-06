@@ -73,6 +73,7 @@ export default function NewCoursePage() {
     newInstructor: "",
     newSchedule: "",
     newOutcome: "",
+    status: "draft",
   })
 
   const handleSubmit = (e: React.FormEvent) => {

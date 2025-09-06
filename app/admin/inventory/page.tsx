@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { PlusCircle, FolderTree, Folder } from "lucide-react"
+import { apiClient } from "@/lib/api" // 🔹 import your axios client
 
 interface Subcategory {
+  id?: number
   name: string
   description: string
 }
@@ -26,38 +28,54 @@ export default function CategoryPage() {
   const [subcategoryDescription, setSubcategoryDescription] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
 
-  const handleAddCategory = () => {
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await apiClient("GET", "/categories")
+        setCategories(res.data || res)
+      } catch (err) {
+        console.error("Failed to fetch categories:", err)
+      }
+    }
+    fetchCategories()
+  }, [])
+
+  const handleAddCategory = async () => {
     if (!categoryName.trim()) return
-    setCategories([
-      ...categories,
-      {
-        id: Date.now(),
+    try {
+      const newCategory = await apiClient("POST", "/categories", {
         name: categoryName,
         description: categoryDescription,
-        subcategories: [],
-      },
-    ])
-    setCategoryName("")
-    setCategoryDescription("")
+      })
+      setCategories([...categories, newCategory])
+      setCategoryName("")
+      setCategoryDescription("")
+    } catch (err) {
+      console.error("Failed to add category:", err)
+    }
   }
 
-  const handleAddSubcategory = () => {
+  const handleAddSubcategory = async () => {
     if (!subcategoryName.trim() || selectedCategory === null) return
-    setCategories(
-      categories.map((cat) =>
-        cat.id === selectedCategory
-          ? {
-              ...cat,
-              subcategories: [
-                ...cat.subcategories,
-                { name: subcategoryName, description: subcategoryDescription },
-              ],
-            }
-          : cat
+    try {
+      const newSub = await apiClient("POST", `/categories/${selectedCategory}/subcategories`, {
+        name: subcategoryName,
+        description: subcategoryDescription,
+      })
+
+      setCategories(
+        categories.map((cat) =>
+          cat.id === selectedCategory
+            ? { ...cat, subcategories: [...cat.subcategories, newSub] }
+            : cat
+        )
       )
-    )
-    setSubcategoryName("")
-    setSubcategoryDescription("")
+
+      setSubcategoryName("")
+      setSubcategoryDescription("")
+    } catch (err) {
+      console.error("Failed to add subcategory:", err)
+    }
   }
 
   return (
@@ -112,7 +130,7 @@ export default function CategoryPage() {
               }
             >
               <option value="">Select Category</option>
-              {categories.map((cat) => (
+              {categories?.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
                 </option>
@@ -148,11 +166,11 @@ export default function CategoryPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {categories.length === 0 ? (
+          {categories?.length === 0 ? (
             <p className="text-muted-foreground text-sm">No categories added yet.</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {categories.map((cat) => (
+              {categories?.map((cat) => (
                 <div key={cat.id} className="border rounded-lg p-3 space-y-2">
                   <div className="flex items-center gap-2 font-semibold">
                     <Folder className="h-4 w-4 text-primary" />
@@ -160,10 +178,10 @@ export default function CategoryPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">{cat.description}</p>
 
-                  {cat.subcategories.length > 0 ? (
+                  {cat?.subcategories?.length > 0 ? (
                     <ul className="ml-6 mt-2 list-disc text-sm text-muted-foreground space-y-1">
-                      {cat.subcategories.map((sub, idx) => (
-                        <li key={idx}>
+                      {cat?.subcategories?.map((sub) => (
+                        <li key={sub.id || sub.name}>
                           <div className="flex items-center gap-2 font-medium">
                             <FolderTree className="h-3 w-3 text-muted-foreground" />
                             {sub.name}

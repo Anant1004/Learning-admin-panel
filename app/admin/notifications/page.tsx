@@ -66,13 +66,13 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Send Notification</h1>
         <p className="text-muted-foreground">Send push notifications to your users</p>
       </div>
       
-      <Card>
+      <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>Create New Notification</CardTitle>
           <CardDescription>
@@ -80,7 +80,7 @@ export default function NotificationsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 p-2">
             <div className="space-y-2">
               <Label htmlFor="title">Title *</Label>
               <Input
@@ -144,7 +144,7 @@ export default function NotificationsPage() {
         </CardContent>
       </Card>
       
-      <Card>
+      <Card className="w-full mt-8">
         <CardHeader>
           <CardTitle>Recent Notifications</CardTitle>
           <CardDescription>View your notification history</CardDescription>

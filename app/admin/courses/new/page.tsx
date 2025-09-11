@@ -14,27 +14,13 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Upload, Save, Eye, Plus, X } from "lucide-react"
 import Link from "next/link"
-import { apiClient } from "@/lib/api"
+import { fetchCategories, fetchSubcategories } from "@/lib/function"
 
 const mockInstructors = [
   { id: "inst1", name: "John Smith", email: "john@example.com" },
   { id: "inst2", name: "Sarah Johnson", email: "sarah@example.com" },
   { id: "inst3", name: "Mike Wilson", email: "mike@example.com" },
 ]
-
-// const mockCategories = [
-//   { id: "cat1", name: "Programming" },
-//   { id: "cat2", name: "Design" },
-//   { id: "cat3", name: "Business" },
-//   { id: "cat4", name: "Marketing" },
-// ]
-
-// const mockSubCategories = [
-//   { id: "subcat1", name: "Web Development", categoryId: "cat1" },
-//   { id: "subcat2", name: "Mobile Development", categoryId: "cat1" },
-//   { id: "subcat3", name: "UI/UX Design", categoryId: "cat2" },
-//   { id: "subcat4", name: "Graphic Design", categoryId: "cat2" },
-// ]
 
 const mockSubjects = [
   { id: "sub1", name: "JavaScript" },
@@ -78,28 +64,7 @@ export default function NewCoursePage() {
     newOutcome: "",
     status: "draft",
   })
-  const fetchCategories = async () => {
-    try {
-      const res = await apiClient("GET", "/categories")
-      if (res.ok) {
-        setCategories(res.data)
-      } else {
-        console.log("Failed to fetch categories")
-      }
-    } catch (err) {
-      console.log("Error fetching categories:", err)
-    }
-  }
-  const fetchSubcategoryies = async (id:string) => {
-    try {
-      const res = await apiClient("GET", `/subcategories/${id}`)
-      if (res.ok) {
-        setSubCategories(res.data)
-      }
-    } catch (err) {
-      console.log("Error fetching subcategories:", err)
-    }
-  }
+  
   useEffect(() => {
     fetchCategories()
   }, [])
@@ -113,7 +78,7 @@ export default function NewCoursePage() {
   
   const handleInputChange = (field: string, value: string | boolean | string[]) => {
     if (field == "categoryId") {
-      fetchSubcategoryies(value as string)
+      fetchSubcategories(value as string)
     }
     setFormData((prev) => ({
       ...prev,

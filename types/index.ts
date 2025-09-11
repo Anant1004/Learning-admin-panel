@@ -1,4 +1,18 @@
 // Database schema types for the LMS system
+export interface Subcategory {
+  _id?: number
+  name: string
+  description: string
+}
+
+export interface Category {
+  _id: number
+  name: string
+  description: string
+  subcategories: Subcategory[]
+}
+
+
 export interface User {
   id: string
   name: string

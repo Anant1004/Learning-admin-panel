@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -12,53 +11,66 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { ArrowLeft, Upload, Save, Video, FileVideo } from "lucide-react"
+import { ArrowLeft, Save } from "lucide-react"
+import { apiClient } from "@/lib/api"
 
 export default function UploadVideoPage() {
   const router = useRouter()
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    category: "",
+    categoryId: "",
     tags: "",
+    type: "youtube", // backend field name
+    video_url: "",
+    thumbnail_url: "",
     status: "draft",
   })
-  const [videoFile, setVideoFile] = useState<File | null>(null)
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
+
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [isUploading, setIsUploading] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [categories, setCategories] = useState<any[]>([])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsUploading(true)
 
-    // Simulate upload progress
-    for (let i = 0; i <= 100; i += 10) {
-      setUploadProgress(i)
-      await new Promise((resolve) => setTimeout(resolve, 200))
-    }
-
-    console.log("Uploading video:", { formData, videoFile, thumbnailFile })
-    setIsUploading(false)
-    router.push("/admin/free-videos")
+    startTransition(async () => {
+      try {
+        const res = await apiClient("POST", "/freevideos", formData)
+        if (res.ok) {
+          alert("Video uploaded successfully")
+          console.log("Video uploaded successfully")
+          router.push("/admin/free-videos")
+        } else {
+          console.log("Failed to upload video")
+        }
+      } catch (err) {
+        console.log("Error uploading video:", err)
+      } finally {
+        setUploadProgress(100)
+      }
+    })
   }
+
+  const fetchCategories = async () => {
+    try {
+      const res = await apiClient("GET", "/categories")
+      if (res.ok) {
+        setCategories(res.data)
+      } else {
+        console.error("Failed to fetch categories")
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error)
+    }
+  }
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file && file.type.startsWith("video/")) {
-      setVideoFile(file)
-    }
-  }
-
-  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file && file.type.startsWith("image/")) {
-      setThumbnailFile(file)
-    }
   }
 
   return (
@@ -112,16 +124,19 @@ export default function UploadVideoPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
-                    <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
+                    <Select
+                      value={formData.categoryId}
+                      onValueChange={(value) => handleInputChange("categoryId", value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="web-development">Web Development</SelectItem>
-                        <SelectItem value="programming">Programming</SelectItem>
-                        <SelectItem value="design">Design</SelectItem>
-                        <SelectItem value="data-science">Data Science</SelectItem>
-                        <SelectItem value="mobile-development">Mobile Development</SelectItem>
+                        {categories.map((cat: any) => (
+                          <SelectItem key={cat._id} value={cat._id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -141,86 +156,53 @@ export default function UploadVideoPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Video Upload</CardTitle>
-                <CardDescription>Upload your video file</CardDescription>
+                <CardTitle>Video Source</CardTitle>
+                <CardDescription>Provide YouTube video details</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-                    <Video className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <div>
-                      <input
-                        type="file"
-                        accept="video/*"
-                        onChange={handleVideoUpload}
-                        className="hidden"
-                        id="video-upload"
-                      />
-                      <Label htmlFor="video-upload">
-                        <Button variant="outline" type="button" asChild>
-                          <span>
-                            <Upload className="mr-2 h-4 w-4" />
-                            Choose Video File
-                          </span>
-                        </Button>
-                      </Label>
-                      <p className="mt-2 text-sm text-muted-foreground">MP4, MOV, AVI files up to 500MB</p>
-                    </div>
-                  </div>
-
-                  {videoFile && (
-                    <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                      <FileVideo className="h-4 w-4" />
-                      <span className="text-sm">{videoFile.name}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
-                      </span>
-                    </div>
-                  )}
-
-                  {isUploading && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Uploading...</span>
-                        <span>{uploadProgress}%</span>
-                      </div>
-                      <Progress value={uploadProgress} />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Thumbnail</CardTitle>
-                <CardDescription>Upload a custom thumbnail (optional)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleThumbnailUpload}
-                      className="hidden"
-                      id="thumbnail-upload"
-                    />
-                    <Label htmlFor="thumbnail-upload">
-                      <Button variant="outline" type="button" asChild>
-                        <span>
-                          <Upload className="mr-2 h-4 w-4" />
-                          Upload Thumbnail
-                        </span>
-                      </Button>
-                    </Label>
-                    <p className="mt-2 text-sm text-muted-foreground">JPG, PNG files recommended 1280x720</p>
-                  </div>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="videoType">Video Type</Label>
+                  <Select value={formData.type} onValueChange={(value) => handleInputChange("type", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="youtube">YouTube</SelectItem>
+                      <SelectItem value="youtube shorts">YouTube Shorts</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                {thumbnailFile && (
-                  <div className="mt-4 flex items-center gap-2 p-3 bg-muted rounded-lg">
-                    <span className="text-sm">{thumbnailFile.name}</span>
+                <div className="space-y-2">
+                  <Label htmlFor="video_url">Video URL</Label>
+                  <Input
+                    id="video_url"
+                    placeholder="https://youtube.com/watch?v=..."
+                    value={formData.video_url}
+                    onChange={(e) => handleInputChange("video_url", e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="thumbnail_url">Thumbnail URL</Label>
+                  <Input
+                    id="thumbnail_url"
+                    placeholder="https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg"
+                    value={formData.thumbnail_url}
+                    onChange={(e) => handleInputChange("thumbnail_url", e.target.value)}
+                    required
+                  />
+                </div>
+
+                {isPending && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Submitting...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <Progress value={uploadProgress} />
                   </div>
                 )}
               </CardContent>
@@ -257,9 +239,12 @@ export default function UploadVideoPage() {
           <Link href="/admin/free-videos">
             <Button variant="outline">Cancel</Button>
           </Link>
-          <Button type="submit" disabled={!videoFile || isUploading}>
+          <Button
+            type="submit"
+            disabled={isPending || !formData.video_url || !formData.thumbnail_url || !formData.categoryId}
+          >
             <Save className="mr-2 h-4 w-4" />
-            {isUploading ? "Uploading..." : "Upload Video"}
+            {isPending ? "Submitting..." : "Save Video"}
           </Button>
         </div>
       </form>

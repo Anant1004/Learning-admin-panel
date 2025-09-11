@@ -24,7 +24,6 @@ function createAxiosClient() {
         ...response.data,
       };
     } catch (error:any) {
-      console?.error("Axios error:", error?.message);
       if (error.response?.data?.message) {
         throw error.response.data.message;
       }

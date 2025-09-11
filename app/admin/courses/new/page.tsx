@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Upload, Save, Eye, Plus, X } from "lucide-react"
 import Link from "next/link"
+import { apiClient } from "@/lib/api"
 
 const mockInstructors = [
   { id: "inst1", name: "John Smith", email: "john@example.com" },
@@ -21,19 +22,19 @@ const mockInstructors = [
   { id: "inst3", name: "Mike Wilson", email: "mike@example.com" },
 ]
 
-const mockCategories = [
-  { id: "cat1", name: "Programming" },
-  { id: "cat2", name: "Design" },
-  { id: "cat3", name: "Business" },
-  { id: "cat4", name: "Marketing" },
-]
+// const mockCategories = [
+//   { id: "cat1", name: "Programming" },
+//   { id: "cat2", name: "Design" },
+//   { id: "cat3", name: "Business" },
+//   { id: "cat4", name: "Marketing" },
+// ]
 
-const mockSubCategories = [
-  { id: "subcat1", name: "Web Development", categoryId: "cat1" },
-  { id: "subcat2", name: "Mobile Development", categoryId: "cat1" },
-  { id: "subcat3", name: "UI/UX Design", categoryId: "cat2" },
-  { id: "subcat4", name: "Graphic Design", categoryId: "cat2" },
-]
+// const mockSubCategories = [
+//   { id: "subcat1", name: "Web Development", categoryId: "cat1" },
+//   { id: "subcat2", name: "Mobile Development", categoryId: "cat1" },
+//   { id: "subcat3", name: "UI/UX Design", categoryId: "cat2" },
+//   { id: "subcat4", name: "Graphic Design", categoryId: "cat2" },
+// ]
 
 const mockSubjects = [
   { id: "sub1", name: "JavaScript" },
@@ -44,6 +45,8 @@ const mockSubjects = [
 
 export default function NewCoursePage() {
   const router = useRouter()
+  const [categories, setCategories] = useState<any[]>([])
+  const [subCategories, setSubCategories] = useState<any[]>([])
   const [formData, setFormData] = useState({
     title: "",
     subtitle: "",
@@ -75,6 +78,31 @@ export default function NewCoursePage() {
     newOutcome: "",
     status: "draft",
   })
+  const fetchCategories = async () => {
+    try {
+      const res = await apiClient("GET", "/categories")
+      if (res.ok) {
+        setCategories(res.data)
+      } else {
+        console.log("Failed to fetch categories")
+      }
+    } catch (err) {
+      console.log("Error fetching categories:", err)
+    }
+  }
+  const fetchSubcategoryies = async (id:string) => {
+    try {
+      const res = await apiClient("GET", `/subcategories/${id}`)
+      if (res.ok) {
+        setSubCategories(res.data)
+      }
+    } catch (err) {
+      console.log("Error fetching subcategories:", err)
+    }
+  }
+  useEffect(() => {
+    fetchCategories()
+  }, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,8 +110,15 @@ export default function NewCoursePage() {
     router.push("/admin/courses")
   }
 
+  
   const handleInputChange = (field: string, value: string | boolean | string[]) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    if (field == "categoryId") {
+      fetchSubcategoryies(value as string)
+    }
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value === "default" ? "" : value,
+    }))
   }
 
   const addToArray = (field: keyof typeof formData, value: string, tempField: string) => {
@@ -193,8 +228,8 @@ export default function NewCoursePage() {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
+                        {categories.map((category) => (
+                          <SelectItem key={category._id} value={category._id}>
                             {category.name}
                           </SelectItem>
                         ))}
@@ -212,19 +247,19 @@ export default function NewCoursePage() {
                         <SelectValue placeholder="Select subcategory" />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockSubCategories
-                          .filter((sub) => sub.categoryId === formData.categoryId)
-                          .map((subcategory) => (
-                            <SelectItem key={subcategory.id} value={subcategory.id}>
-                              {subcategory.name}
-                            </SelectItem>
-                          ))}
+                        {subCategories?.map((subcategory) => (
+                          <SelectItem key={subcategory._id} value={subcategory._id}>
+                            {subcategory.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
+
+
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="subject">Subject</Label>
                   <Select value={formData.subjectId} onValueChange={(value) => handleInputChange("subjectId", value)}>
                     <SelectTrigger>
@@ -238,7 +273,7 @@ export default function NewCoursePage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">

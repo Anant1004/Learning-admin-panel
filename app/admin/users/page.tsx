@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -32,31 +32,71 @@ import {
   UsersIcon,
   Star,
   Upload,
+  PlusCircle,
+  Loader2,
 } from "lucide-react"
 import { mockUsers } from "@/lib/mock-data"
+import { apiClient } from "@/lib/api"
+import toast from "react-hot-toast"
 
-interface EnhancedUser {
-  id: string
-  name: string
-  email: string
-  phone?: string
-  role: "admin" | "instructor" | "student"
-  avatar?: string
-  bio?: string
-  expertise?: string[]
-  coursesCount?: number
-  studentsCount?: number
-  rating?: number
-  status: "active" | "inactive"
-  createdAt: Date
-  updatedAt: Date
+export type UserRole = "admin" | "instructor" | "student";
+
+export interface EnhancedUser {
+  _id: string;
+  name: string;
+  email: string;
+  phoneNo?: string;
+  role: UserRole | string;
+  bio?: string;
+  expertise?: string;
+  profile_image?: string;
+  created_at: string;
+  updatedAt?: string;
+  status?: "active" | "inactive";
+  coursesCount?: number;
+  studentsCount?: number;
+  rating?: number;
+  avatar?: string;
 }
 
+export interface NewUser {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  role: UserRole;
+  bio?: string;
+  expertise?: string;
+}
+
+export interface UsersApiResponse {
+  ok: boolean;
+  message?: string;
+  users: EnhancedUser[];
+  stats: {
+    totalUsers: number;
+    totalStudents: number;
+    totalAdmins: number;
+    totalInstructors: number;
+    activeUsers: number;
+  };
+}
+
+
+
 export default function UsersPage() {
-  const [users] = useState<EnhancedUser[]>(mockUsers)
+  const [users, setUsers] = useState<EnhancedUser[]>()
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [isAddingUser, setIsAddingUser] = useState(false)
+  const [picture, setPicture] = useState<string>("")
+  const [isPending, startTransition] = useTransition()
+  const [file, setFile] = useState<File | null>(null)
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [adminsCount, setAdminsCount] = useState(0)
+  const [instructorsCount, setInstructorsCount] = useState(0)
+  const [studentsCount, setStudentsCount] = useState(0)
+  const [activeUsersCount, setActiveUsersCount] = useState(0)
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -67,14 +107,22 @@ export default function UsersPage() {
     expertise: "",
   })
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.expertise && user.expertise.some((skill) => skill.toLowerCase().includes(searchTerm.toLowerCase())))
-    const matchesRole = roleFilter === "all" || user.role === roleFilter
-    return matchesSearch && matchesRole
-  })
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setPicture(URL.createObjectURL(selectedFile));
+    }
+  };
+  console.log("Users data:", users)
+  // const filteredUsers = users.filter((user) => {
+  //   const matchesSearch =
+  //     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     (user.expertise && user.expertise.some((skill) => skill.toLowerCase().includes(searchTerm.toLowerCase())))
+  //   const matchesRole = roleFilter === "all" || user.role === roleFilter
+  //   return matchesSearch && matchesRole
+  // })
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -95,35 +143,109 @@ export default function UsersPage() {
       : "bg-gray-100 text-gray-800 hover:bg-gray-100"
   }
 
-  const getRoleStats = () => {
-    const stats = users.reduce(
-      (acc, user) => {
-        acc[user.role] = (acc[user.role] || 0) + 1
-        return acc
-      },
-      {} as Record<string, number>,
-    )
-    return {
-      total: users.length,
-      admin: stats.admin || 0,
-      instructor: stats.instructor || 0,
-      student: stats.student || 0,
-      active: users.filter((u) => u.status === "active").length,
+  // const getRoleStats = () => {
+  //   const stats = users.reduce(
+  //     (acc, user) => {
+  //       acc[user.role] = (acc[user.role] || 0) + 1
+  //       return acc
+  //     },
+  //     {} as Record<string, number>,
+  //   )
+  //   return {
+  //     total: users.length,
+  //     admin: stats.admin || 0,
+  //     instructor: stats.instructor || 0,
+  //     student: stats.student || 0,
+  //     active: users.filter((u) => u.status === "active").length,
+  //   }
+  // }
+
+  useEffect(() => {
+    handleFetchUsers();
+  }, []);
+
+  const handleFetchUsers = async () => {
+    try {
+      const res = await apiClient("GET", "/users", null, false);
+
+      if (res?.ok && Array.isArray(res.users)) {
+        const mappedUsers: EnhancedUser[] = res.users?.map((u: any) => ({
+          _id: u._id,
+          name: u.name,
+          email: u.email,
+          phoneNo: u.phoneNo || "",
+          role: u.role,
+          bio: u.bio || "",
+          expertise: u.expertise || "",
+          profile_image: u.profile_image || "",
+          created_at: u.created_at,
+          updatedAt: u.updatedAt,
+        }));
+        setTotalUsers(res.stats.totalUsers || 0);
+        setStudentsCount(res.stats.totalStudents || 0);
+        setAdminsCount(res.stats.totalAdmins || 0);
+        setInstructorsCount(res.stats.totalInstructors || 0);
+        setActiveUsersCount(res.stats.activeUsers || 0);
+
+        setUsers(mappedUsers);
+        console.log("Fetched users:", mappedUsers);
+      } else {
+        toast.error(res?.message || "Failed to fetch users");
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Something went wrong");
     }
-  }
+  };
 
-  const stats = getRoleStats()
 
-  const handleAddUser = () => {
+  // const stats = getRoleStats()
+  const handleAddUser = async () => {
     if (newUser.name.trim() && newUser.email.trim() && newUser.password.trim()) {
-      console.log("Adding user:", {
-        ...newUser,
-        expertise: newUser.expertise ? newUser.expertise.split(",").map((s) => s.trim()) : [],
-      })
-      setNewUser({ name: "", email: "", phone: "", password: "", role: "student", bio: "", expertise: "" })
-      setIsAddingUser(false)
+      startTransition(async () => {
+        try {
+          setIsAddingUser(true);
+
+          const formData = new FormData();
+          formData.append("name", newUser.name);
+          formData.append("email", newUser.email);
+          formData.append("phoneNo", newUser.phone || "");
+          formData.append("password", newUser.password);
+          formData.append("role", newUser.role);
+          formData.append("bio", newUser.bio || "");
+          formData.append("expertise", newUser.expertise || "");
+
+          if (file) {
+            formData.append("profile_image", file);
+          }
+
+          const res = await apiClient("POST", "/users", formData, true);
+
+          if (res?.ok) {
+            toast.success(res.message || "User added successfully!");
+            setNewUser({
+              name: "",
+              email: "",
+              phone: "",
+              password: "",
+              role: "student",
+              bio: "",
+              expertise: "",
+            });
+            setPicture("");
+            setFile(null);
+            setIsAddingUser(false);
+          } else {
+            toast.error(res?.message || "Failed to add user");
+          }
+
+        } catch (error: any) {
+          toast.error(error);
+        }
+      });
     }
-  }
+  };
+
+
 
   return (
     <div className="space-y-6">
@@ -201,13 +323,34 @@ export default function UsersPage() {
               <div className="space-y-2">
                 <Label htmlFor="user-photo">Profile Photo</Label>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="w-full bg-transparent">
+                  <Input
+                    id="user-photo"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full bg-transparent"
+                    onClick={() => document.getElementById("user-photo")?.click()}
+                  >
                     <Upload className="mr-2 h-4 w-4" />
                     Upload Photo
                   </Button>
                 </div>
+                {picture && (
+                  <div className="mt-2">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={picture} alt="Preview" />
+                      <AvatarFallback>{newUser.name.charAt(0) || "U"}</AvatarFallback>
+                    </Avatar>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">Optional: Upload a profile picture</p>
               </div>
+
               {newUser.role === "instructor" && (
                 <>
                   <div className="space-y-2">
@@ -230,11 +373,18 @@ export default function UsersPage() {
                   </div>
                 </>
               )}
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 ">
                 <Button variant="outline" onClick={() => setIsAddingUser(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddUser}>Add User</Button>
+                <Button onClick={handleAddUser} disabled={isPending}>
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                  )}
+                  {isPending ? "Adding..." : "Add User"}
+                </Button>
               </div>
             </div>
           </DialogContent>
@@ -249,7 +399,7 @@ export default function UsersPage() {
               <UserPlus className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Total Users</span>
             </div>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-2xl font-bold">{totalUsers}</div>
           </CardContent>
         </Card>
         <Card>
@@ -258,7 +408,7 @@ export default function UsersPage() {
               <div className="h-3 w-3 rounded-full bg-green-500" />
               <span className="text-sm text-muted-foreground">Students</span>
             </div>
-            <div className="text-2xl font-bold">{stats.student}</div>
+            <div className="text-2xl font-bold">{studentsCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -267,7 +417,7 @@ export default function UsersPage() {
               <div className="h-3 w-3 rounded-full bg-blue-500" />
               <span className="text-sm text-muted-foreground">Instructors</span>
             </div>
-            <div className="text-2xl font-bold">{stats.instructor}</div>
+            <div className="text-2xl font-bold">{instructorsCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -276,7 +426,7 @@ export default function UsersPage() {
               <div className="h-3 w-3 rounded-full bg-red-500" />
               <span className="text-sm text-muted-foreground">Admins</span>
             </div>
-            <div className="text-2xl font-bold">{stats.admin}</div>
+            <div className="text-2xl font-bold">{adminsCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -285,7 +435,7 @@ export default function UsersPage() {
               <div className="h-3 w-3 rounded-full bg-emerald-500" />
               <span className="text-sm text-muted-foreground">Active</span>
             </div>
-            <div className="text-2xl font-bold">{stats.active}</div>
+            <div className="text-2xl font-bold">{"Active"}</div>
           </CardContent>
         </Card>
       </div>
@@ -317,8 +467,8 @@ export default function UsersPage() {
 
       {/* Users List */}
       <div className="space-y-4">
-        {filteredUsers.map((user) => (
-          <Card key={user.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+        {users?.map((user) => (
+          <Card key={user._id} className="overflow-hidden hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
@@ -339,7 +489,7 @@ export default function UsersPage() {
                       <p className="text-sm text-muted-foreground max-w-md">{user.bio}</p>
                     )}
 
-                    {user.expertise && user.expertise.length > 0 && (
+                    {/* {user.expertise && user.expertise.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {user.expertise.map((skill) => (
                           <Badge key={skill} variant="outline" className="text-xs">
@@ -347,7 +497,7 @@ export default function UsersPage() {
                           </Badge>
                         ))}
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </div>
 
@@ -380,10 +530,10 @@ export default function UsersPage() {
 
                   <div className="flex items-center gap-2">
                     <Badge className={getRoleColor(user.role)}>{user.role}</Badge>
-                    <Badge className={getStatusColor(user.status)}>{user.status}</Badge>
+                    <Badge className={getStatusColor(user.status || '')}>{user.status}</Badge>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      <span>Joined {user.createdAt.toLocaleDateString()}</span>
+                      {/* <span>Joined {user.createdAt.toLocaleDateString()}</span> */}
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -420,9 +570,10 @@ export default function UsersPage() {
             </CardContent>
           </Card>
         ))}
+         
       </div>
 
-      {filteredUsers.length === 0 && (
+      {/* {filteredUsers.length === 0 && (
         <div className="text-center py-8">
           <UserPlus className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No users found</h3>
@@ -432,7 +583,7 @@ export default function UsersPage() {
               : "Get started by adding your first user"}
           </p>
         </div>
-      )}
+      )} */}
     </div>
   )
 }

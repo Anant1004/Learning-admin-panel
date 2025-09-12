@@ -17,13 +17,12 @@ import {
   handleAddCategory,
   handleAddSubcategory as addSubcategory,
   handleDeleteCategory as deleteCategory,
-  handleDeleteSubcategory as deleteSubcategory
+  handleDeleteSubcategory as deleteSubcategory,
 } from "@/lib/function";
 import { Category } from "@/types";
 
 export default function CategoryPage() {
-  const categoryAndSubcategorySectionRef = useRef<HTMLDivElement | null>(null);
-
+  const categorySectionRef = useRef<HTMLDivElement | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryName, setCategoryName] = useState("");
   const [categoryDescription, setCategoryDescription] = useState("");
@@ -32,19 +31,25 @@ export default function CategoryPage() {
   const [selectedCategory, setSelectedCategory] = useState<any | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isPendingSub, startTransitionSub] = useTransition();
-  const [categoryAndSubcategory, setCategoryAndSubcategory] = useState<any[]>([]);
 
   useEffect(() => {
     const loadCategories = async () => {
       const [cats, catsWithSubs] = await Promise.all([
         fetchCategories(),
-        handleFetchCategoriesAndSubcategories()
+        handleFetchCategoriesAndSubcategories(),
       ]);
-      
-      if (cats) setCategories(cats);
-      if (catsWithSubs) setCategoryAndSubcategory(catsWithSubs);
+
+      if (cats) {
+        const merged = cats.map((cat: any) => {
+          const match = catsWithSubs?.find((c: any) => c._id === cat._id);
+          return {
+            ...cat,
+            subcategories: match?.subcategories || [],
+          };
+        });
+        setCategories(merged);
+      }
     };
-    
     loadCategories();
   }, [isPending, isPendingSub]);
 
@@ -55,11 +60,21 @@ export default function CategoryPage() {
       setCategoryName("");
       setCategoryDescription("");
 
-      const updated = await fetchCategories();
-      if (updated) setCategories(updated);
+      const [cats, catsWithSubs] = await Promise.all([
+        fetchCategories(),
+        handleFetchCategoriesAndSubcategories(),
+      ]);
 
-      const updatedWithSubs = await handleFetchCategoriesAndSubcategories();
-      if (updatedWithSubs) setCategoryAndSubcategory(updatedWithSubs);
+      if (cats) {
+        const merged = cats.map((cat: any) => {
+          const match = catsWithSubs?.find((c: any) => c._id === cat._id);
+          return {
+            ...cat,
+            subcategories: match?.subcategories || [],
+          };
+        });
+        setCategories(merged);
+      }
     });
   };
 
@@ -77,16 +92,29 @@ export default function CategoryPage() {
         setSubcategoryName("");
         setSelectedCategory(null);
         setSubcategoryDescription("");
-        scrollToCategoryAndSubcategory();
+        scrollToCategories();
 
-        const updatedWithSubs = await handleFetchCategoriesAndSubcategories();
-        if (updatedWithSubs) setCategoryAndSubcategory(updatedWithSubs);
+        const [cats, catsWithSubs] = await Promise.all([
+          fetchCategories(),
+          handleFetchCategoriesAndSubcategories(),
+        ]);
+
+        if (cats) {
+          const merged = cats.map((cat: any) => {
+            const match = catsWithSubs?.find((c: any) => c._id === cat._id);
+            return {
+              ...cat,
+              subcategories: match?.subcategories || [],
+            };
+          });
+          setCategories(merged);
+        }
       }
     });
   };
 
-  const scrollToCategoryAndSubcategory = () => {
-    categoryAndSubcategorySectionRef.current?.scrollIntoView({
+  const scrollToCategories = () => {
+    categorySectionRef.current?.scrollIntoView({
       behavior: "smooth",
     });
   };
@@ -96,9 +124,7 @@ export default function CategoryPage() {
 
     const response = await deleteCategory(categoryId);
     if (response?.ok) {
-      setCategories(prev => prev.filter(cat => cat._id !== categoryId));
-      const updatedWithSubs = await handleFetchCategoriesAndSubcategories();
-      if (updatedWithSubs) setCategoryAndSubcategory(updatedWithSubs);
+      setCategories((prev) => prev.filter((cat) => cat._id !== categoryId));
     }
   };
 
@@ -107,8 +133,21 @@ export default function CategoryPage() {
 
     const response = await deleteSubcategory(subcategoryId);
     if (response?.ok) {
-      const updatedWithSubs = await handleFetchCategoriesAndSubcategories();
-      if (updatedWithSubs) setCategoryAndSubcategory(updatedWithSubs);
+      const [cats, catsWithSubs] = await Promise.all([
+        fetchCategories(),
+        handleFetchCategoriesAndSubcategories(),
+      ]);
+
+      if (cats) {
+        const merged = cats.map((cat: any) => {
+          const match = catsWithSubs?.find((c: any) => c._id === cat._id);
+          return {
+            ...cat,
+            subcategories: match?.subcategories || [],
+          };
+        });
+        setCategories(merged);
+      }
     }
   };
 
@@ -117,8 +156,8 @@ export default function CategoryPage() {
       <div>
         <h1 className="text-3xl font-bold">Category Management</h1>
         <p className="text-muted-foreground">
-          Add categories and subcategories with descriptions to organize your LMS
-          content.
+          Add categories and subcategories with descriptions to organize your
+          LMS content.
         </p>
       </div>
 
@@ -200,66 +239,59 @@ export default function CategoryPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            <div ref={categoryAndSubcategorySectionRef}></div>
+            <div ref={categorySectionRef}></div>
             Categories & Subcategories
           </CardTitle>
           <CardDescription>
-            All created categories with subcategories
+            All created categories (with or without subcategories)
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {categoryAndSubcategory?.length === 0 ? (
+          {categories?.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               No categories added yet.
             </p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {categoryAndSubcategory?.map((cat: any) => (
-                <div
-                  key={cat?._id}
-                  className="border rounded-lg p-3 space-y-2"
-                >
+              {categories.map((cat) => (
+                <div key={cat._id} className="border rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 font-semibold">
                       <Folder className="h-4 w-4 text-primary" />
-                      {cat?.name}
+                      {cat.name}
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="opacity-50 hover:opacity-100 transition"
-                        onClick={() => handleDeleteCategory(cat._id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="opacity-50 hover:opacity-100 transition"
+                      onClick={() => handleDeleteCategory(cat._id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {cat?.description}
+                    {cat.description}
                   </p>
 
-                  {cat?.subcategories?.length > 0 ? (
+                  {cat.subcategories && cat.subcategories.length > 0 ? (
                     <ul className="ml-6 mt-2 list-disc text-sm text-muted-foreground space-y-1">
-                      {cat?.subcategories?.map((sub: any) => (
-                        <li key={sub?._id || sub?.name}>
+                      {cat.subcategories.map((sub: any) => (
+                        <li key={sub._id || sub.name}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 font-medium">
-                              {sub?.name}
+                              {sub.name}
                             </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="opacity-50 hover:opacity-100 transition"
-                                onClick={() => handleDeleteSubcategory(sub._id)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="opacity-50 hover:opacity-100 transition"
+                              onClick={() => handleDeleteSubcategory(sub._id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
                           <p className="ml-5 text-xs text-muted-foreground">
-                            {sub?.description}
+                            {sub.description}
                           </p>
                         </li>
                       ))}

@@ -35,53 +35,10 @@ import {
   PlusCircle,
   Loader2,
 } from "lucide-react"
-import { mockUsers } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api"
 import toast from "react-hot-toast"
-
-export type UserRole = "admin" | "instructor" | "student";
-
-export interface EnhancedUser {
-  _id: string;
-  name: string;
-  email: string;
-  phoneNo?: string;
-  role: UserRole | string;
-  bio?: string;
-  expertise?: string;
-  profile_image?: string;
-  created_at: string;
-  updatedAt?: string;
-  status?: "active" | "inactive";
-  coursesCount?: number;
-  studentsCount?: number;
-  rating?: number;
-  avatar?: string;
-}
-
-export interface NewUser {
-  name: string;
-  email: string;
-  phone?: string;
-  password: string;
-  role: UserRole;
-  bio?: string;
-  expertise?: string;
-}
-
-export interface UsersApiResponse {
-  ok: boolean;
-  message?: string;
-  users: EnhancedUser[];
-  stats: {
-    totalUsers: number;
-    totalStudents: number;
-    totalAdmins: number;
-    totalInstructors: number;
-    activeUsers: number;
-  };
-}
-
+import { Adduser, getRoleColor } from "@/lib/function"
+import { EnhancedUser } from "@/types"
 
 
 export default function UsersPage() {
@@ -96,15 +53,15 @@ export default function UsersPage() {
   const [adminsCount, setAdminsCount] = useState(0)
   const [instructorsCount, setInstructorsCount] = useState(0)
   const [studentsCount, setStudentsCount] = useState(0)
-  const [activeUsersCount, setActiveUsersCount] = useState(0)
   const [newUser, setNewUser] = useState({
-    name: "",
+    fullname: "",
     email: "",
-    phone: "",
+    phoneNo: "",
     password: "",
     role: "student" as "admin" | "instructor" | "student",
     bio: "",
     expertise: "",
+    profile_image: file,
   })
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,51 +71,7 @@ export default function UsersPage() {
       setPicture(URL.createObjectURL(selectedFile));
     }
   };
-  console.log("Users data:", users)
-  // const filteredUsers = users.filter((user) => {
-  //   const matchesSearch =
-  //     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //     (user.expertise && user.expertise.some((skill) => skill.toLowerCase().includes(searchTerm.toLowerCase())))
-  //   const matchesRole = roleFilter === "all" || user.role === roleFilter
-  //   return matchesSearch && matchesRole
-  // })
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "bg-red-100 text-red-800 hover:bg-red-100"
-      case "instructor":
-        return "bg-blue-100 text-blue-800 hover:bg-blue-100"
-      case "student":
-        return "bg-green-100 text-green-800 hover:bg-green-100"
-      default:
-        return "bg-gray-100 text-gray-800 hover:bg-gray-100"
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    return status === "active"
-      ? "bg-green-100 text-green-800 hover:bg-green-100"
-      : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-  }
-
-  // const getRoleStats = () => {
-  //   const stats = users.reduce(
-  //     (acc, user) => {
-  //       acc[user.role] = (acc[user.role] || 0) + 1
-  //       return acc
-  //     },
-  //     {} as Record<string, number>,
-  //   )
-  //   return {
-  //     total: users.length,
-  //     admin: stats.admin || 0,
-  //     instructor: stats.instructor || 0,
-  //     student: stats.student || 0,
-  //     active: users.filter((u) => u.status === "active").length,
-  //   }
-  // }
 
   useEffect(() => {
     handleFetchUsers();
@@ -171,12 +84,12 @@ export default function UsersPage() {
       if (res?.ok && Array.isArray(res.users)) {
         const mappedUsers: EnhancedUser[] = res.users?.map((u: any) => ({
           _id: u._id,
-          name: u.name,
+          fullname: u.fullname,
           email: u.email,
           phoneNo: u.phoneNo || "",
           role: u.role,
           bio: u.bio || "",
-          expertise: u.expertise || "",
+          expertise: u.expertise ? u.expertise.split(",").map((s: string) => s.trim()) : [],
           profile_image: u.profile_image || "",
           created_at: u.created_at,
           updatedAt: u.updatedAt,
@@ -185,7 +98,6 @@ export default function UsersPage() {
         setStudentsCount(res.stats.totalStudents || 0);
         setAdminsCount(res.stats.totalAdmins || 0);
         setInstructorsCount(res.stats.totalInstructors || 0);
-        setActiveUsersCount(res.stats.activeUsers || 0);
 
         setUsers(mappedUsers);
         console.log("Fetched users:", mappedUsers);
@@ -198,51 +110,37 @@ export default function UsersPage() {
   };
 
 
-  // const stats = getRoleStats()
   const handleAddUser = async () => {
-    if (newUser.name.trim() && newUser.email.trim() && newUser.password.trim()) {
-      startTransition(async () => {
-        try {
-          setIsAddingUser(true);
-
-          const formData = new FormData();
-          formData.append("name", newUser.name);
-          formData.append("email", newUser.email);
-          formData.append("phoneNo", newUser.phone || "");
-          formData.append("password", newUser.password);
-          formData.append("role", newUser.role);
-          formData.append("bio", newUser.bio || "");
-          formData.append("expertise", newUser.expertise || "");
-
-          if (file) {
-            formData.append("profile_image", file);
-          }
-
-          const res = await apiClient("POST", "/users", formData, true);
-
-          if (res?.ok) {
-            toast.success(res.message || "User added successfully!");
-            setNewUser({
-              name: "",
-              email: "",
-              phone: "",
-              password: "",
-              role: "student",
-              bio: "",
-              expertise: "",
-            });
-            setPicture("");
-            setFile(null);
-            setIsAddingUser(false);
-          } else {
-            toast.error(res?.message || "Failed to add user");
-          }
-
-        } catch (error: any) {
-          toast.error(error);
-        }
-      });
+    const formData = new FormData();
+  
+    formData.append("fullname", newUser.fullname);
+    formData.append("email", newUser.email);
+    formData.append("phoneNo", newUser.phoneNo || "");
+    formData.append("password", newUser.password);
+    formData.append("role", newUser.role);
+  
+    if (newUser.bio) formData.append("bio", newUser.bio);
+    if (newUser.expertise) formData.append("expertise", newUser.expertise);
+  
+    if (file) {
+      formData.append("profile_image", file);
     }
+  
+    await Adduser(formData);
+  
+    setIsAddingUser(false);
+    setNewUser({
+      fullname: "",
+      email: "",
+      phoneNo: "",
+      password: "",
+      role: "student",
+      bio: "",
+      expertise: "",
+      profile_image: file,
+    });
+    setPicture("");
+    setFile(null);
   };
 
 
@@ -273,8 +171,8 @@ export default function UsersPage() {
                 <Input
                   id="user-name"
                   placeholder="Enter full name"
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  value={newUser.fullname}
+                  onChange={(e) => setNewUser({ ...newUser, fullname: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
@@ -288,13 +186,13 @@ export default function UsersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="user-phone">Phone Number</Label>
+                <Label htmlFor="user-phoneNo">Phone Number</Label>
                 <Input
-                  id="user-phone"
+                  id="user-phoneNo"
                   type="tel"
-                  placeholder="Enter phone number"
-                  value={newUser.phone}
-                  onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
+                  placeholder="Enter phoneNo number"
+                  value={newUser.phoneNo}
+                  onChange={(e) => setNewUser({ ...newUser, phoneNo: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
@@ -344,7 +242,7 @@ export default function UsersPage() {
                   <div className="mt-2">
                     <Avatar className="h-16 w-16">
                       <AvatarImage src={picture} alt="Preview" />
-                      <AvatarFallback>{newUser.name.charAt(0) || "U"}</AvatarFallback>
+                      <AvatarFallback>{newUser.fullname?.charAt(0) || "U"}</AvatarFallback>
                     </Avatar>
                   </div>
                 )}
@@ -392,7 +290,7 @@ export default function UsersPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -427,15 +325,6 @@ export default function UsersPage() {
               <span className="text-sm text-muted-foreground">Admins</span>
             </div>
             <div className="text-2xl font-bold">{adminsCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-emerald-500" />
-              <span className="text-sm text-muted-foreground">Active</span>
-            </div>
-            <div className="text-2xl font-bold">{"Active"}</div>
           </CardContent>
         </Card>
       </div>
@@ -473,12 +362,12 @@ export default function UsersPage() {
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={user.profile_image || "/placeholder.svg"} alt={user.fullname} />
+                    <AvatarFallback>{user.fullname?.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="space-y-2">
                     <div>
-                      <h3 className="font-semibold text-lg">{user.name}</h3>
+                      <h3 className="font-semibold text-lg">{user.fullname}</h3>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Mail className="h-3 w-3" />
                         <span>{user.email}</span>
@@ -486,10 +375,10 @@ export default function UsersPage() {
                     </div>
 
                     {user.role === "instructor" && user.bio && (
-                      <p className="text-sm text-muted-foreground max-w-md">{user.bio}</p>
+                      <p className="text-sm text-muted-foreground max-w-5xl">{user.bio}</p>
                     )}
 
-                    {/* {user.expertise && user.expertise.length > 0 && (
+                    {user.expertise && user.expertise.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {user.expertise.map((skill) => (
                           <Badge key={skill} variant="outline" className="text-xs">
@@ -497,43 +386,16 @@ export default function UsersPage() {
                           </Badge>
                         ))}
                       </div>
-                    )} */}
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  {user.role === "instructor" && (
-                    <div className="grid grid-cols-3 gap-4 text-center text-sm">
-                      <div>
-                        <div className="flex items-center justify-center gap-1">
-                          <BookOpen className="h-3 w-3 text-muted-foreground" />
-                          <span className="font-medium">{user.coursesCount || 0}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Courses</p>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-center gap-1">
-                          <UsersIcon className="h-3 w-3 text-muted-foreground" />
-                          <span className="font-medium">{user.studentsCount || 0}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Students</p>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-center gap-1">
-                          <Star className="h-3 w-3 text-yellow-500 fill-current" />
-                          <span className="font-medium">{user.rating || 0}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Rating</p>
-                      </div>
-                    </div>
-                  )}
-
                   <div className="flex items-center gap-2">
                     <Badge className={getRoleColor(user.role)}>{user.role}</Badge>
-                    <Badge className={getStatusColor(user.status || '')}>{user.status}</Badge>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      {/* <span>Joined {user.createdAt.toLocaleDateString()}</span> */}
+                      <span>Joined {user.created_at}</span>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -546,12 +408,6 @@ export default function UsersPage() {
                           <Edit className="mr-2 h-4 w-4" />
                           Edit User
                         </DropdownMenuItem>
-                        {user.role === "instructor" && (
-                          <DropdownMenuItem>
-                            <BookOpen className="mr-2 h-4 w-4" />
-                            Manage Courses
-                          </DropdownMenuItem>
-                        )}
                         <DropdownMenuItem>
                           <Mail className="mr-2 h-4 w-4" />
                           Send Email

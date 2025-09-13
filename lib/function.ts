@@ -125,3 +125,68 @@ export const handleDeleteSubcategory = async (subcategoryId: number) => {
     return null;
   }
 };
+
+export const handleAddCourse = async (formData: any) => {
+    if (!formData.title.trim()) return;
+
+    try {
+        const newCourse = await apiClient("POST", "/courses", formData);
+
+        if (newCourse.ok) {
+          toast.success(newCourse.message);
+          return newCourse;
+        } else {
+          toast.error(newCourse.error);
+          return null;
+        }
+      } catch (err) {
+        console.error("Failed to add course:", err);
+        return null;
+      }
+};
+
+export const getRoleColor = (role: string) => {
+  switch (role) {
+    case "admin":
+      return "bg-red-100 text-red-800 hover:bg-red-100"
+    case "instructor":
+      return "bg-blue-100 text-blue-800 hover:bg-blue-100"
+    case "student":
+      return "bg-green-100 text-green-800 hover:bg-green-100"
+    default:
+      return "bg-gray-100 text-gray-800 hover:bg-gray-100"
+  }
+}
+
+export const Adduser = async (formData: FormData) => {
+  const fullname = formData.get("fullname")?.toString().trim();
+  const email = formData.get("email")?.toString().trim();
+  const password = formData.get("password")?.toString().trim();
+  const role = formData.get("role")?.toString().trim();
+
+  if (!fullname) return toast.error("Full name is required");
+  if (!email) return toast.error("Email is required");
+  if (!password) return toast.error("Password is required");
+  if (!role) return toast.error("Role is required");
+
+  // Optional fields
+  const phoneNo = formData.get("phoneNo")?.toString().trim() || "";
+  const bio = formData.get("bio")?.toString().trim() || "";
+  const expertise = formData.get("expertise")?.toString().trim() || "";
+
+  try {
+      const newUser = await apiClient("POST", "/users", formData, true);
+      if (newUser.ok) {
+        toast.success(newUser.message);
+        return newUser;
+      } else {
+        toast.error(newUser.error || "Failed to add user");
+        return null;
+      }
+  } catch (err) {
+      console.error("Failed to add user:", err);
+      toast.error("Something went wrong");
+      return null;
+  }
+};
+

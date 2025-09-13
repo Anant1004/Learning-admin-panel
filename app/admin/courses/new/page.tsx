@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -14,7 +13,7 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Upload, Save, Eye, Plus, X } from "lucide-react"
 import Link from "next/link"
-import { fetchCategories, fetchSubcategories } from "@/lib/function"
+import { fetchCategories, fetchSubcategories, handleAddCourse } from "@/lib/function"
 
 const mockInstructors = [
   { id: "inst1", name: "John Smith", email: "john@example.com" },
@@ -39,22 +38,24 @@ export default function NewCoursePage() {
     description: "",
     categoryId: "",
     subCategoryId: "",
+    level: "beginner",
+    paid: true,
+    actualPrice: "",
+    discountPrice: "",
+    duration: "",
+    startDate: "",
+    endDate: "",
     course_topic: [] as string[],
     course_languages: [] as string[],
     subtitle_language: [] as string[],
-    level: "beginner",
-    duration: "",
     instructorId: [] as string[],
-    paid: true,
-    startDate: "",
-    endDate: "",
-    actualPrice: "",
-    discountPrice: "",
     schedule: [] as string[],
     outcomes: [] as string[],
     faq: [{ question: "", answer: "" }] as Array<{ question: string; answer: string }>,
     thumbnail_url: "",
     video_url: "",
+
+
     subjectId: "",
     newTopic: "",
     newLanguage: "",
@@ -66,20 +67,28 @@ export default function NewCoursePage() {
   })
   
   useEffect(() => {
-    fetchCategories()
-  }, [])
+  const loadCategories = async () => {
+    const data = await fetchCategories()
+    if (data) setCategories(data)
+  }
+  loadCategories()
+}, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Creating course:", formData)
+    handleAddCourse(formData)
     router.push("/admin/courses")
   }
 
-  
   const handleInputChange = (field: string, value: string | boolean | string[]) => {
-    if (field == "categoryId") {
-      fetchSubcategories(value as string)
+    if (field === "categoryId") {
+      const loadSubcategories = async () => {
+        const data = await fetchSubcategories(value as string)
+        if (data) setSubCategories(data)
+      }
+      loadSubcategories()
     }
+  
     setFormData((prev) => ({
       ...prev,
       [field]: value === "default" ? "" : value,
@@ -212,33 +221,22 @@ export default function NewCoursePage() {
                         <SelectValue placeholder="Select subcategory" />
                       </SelectTrigger>
                       <SelectContent>
-                        {subCategories?.map((subcategory) => (
+                      {subCategories && subCategories.length > 0 ? (
+                        subCategories.map((subcategory) => (
                           <SelectItem key={subcategory._id} value={subcategory._id}>
                             {subcategory.name}
                           </SelectItem>
-                        ))}
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          None
+                        </SelectItem>
+                      )}
                       </SelectContent>
                     </Select>
-
-
                   </div>
                 </div>
 
-                {/* <div className="space-y-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Select value={formData.subjectId} onValueChange={(value) => handleInputChange("subjectId", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockSubjects.map((subject) => (
-                        <SelectItem key={subject.id} value={subject.id}>
-                          {subject.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div> */}
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">

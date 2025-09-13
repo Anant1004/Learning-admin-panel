@@ -1,3 +1,5 @@
+export type UserRole = "admin" | "instructor" | "student";
+
 // Database schema types for the LMS system
 export interface Subcategory {
   _id?: number
@@ -106,4 +108,20 @@ export interface FreeVideo {
   status: "draft" | "published"
   createdAt: Date
   updatedAt: Date
+}
+export interface EnhancedUser {
+  _id: string;
+  fullname: string;
+  email: string;
+  phoneNo?: string;
+  role: UserRole | string;
+  bio?: string;
+  expertise?: string[];
+  profile_image?: string;
+  created_at: string;
+  updatedAt?: string;
+  status?: "active" | "inactive";
+  coursesCount?: number;
+  studentsCount?: number;
+  rating?: number;
 }

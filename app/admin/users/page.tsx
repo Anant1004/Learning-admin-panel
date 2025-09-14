@@ -109,7 +109,6 @@ export default function UsersPage() {
     }
   };
 
-
   const handleAddUser = async () => {
     const formData = new FormData();
   
@@ -141,7 +140,21 @@ export default function UsersPage() {
     });
     setPicture("");
     setFile(null);
+    handleFetchUsers();
   };
+
+  const filteredUsers = users?.filter((user) => {
+    const matchesSearch =
+      user.fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.expertise?.some((skill) =>
+        skill.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+  
+    return matchesSearch && matchesRole;
+  });
 
 
 
@@ -356,7 +369,7 @@ export default function UsersPage() {
 
       {/* Users List */}
       <div className="space-y-4">
-        {users?.map((user) => (
+        {filteredUsers?.map((user) => (
           <Card key={user._id} className="overflow-hidden hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
@@ -429,7 +442,7 @@ export default function UsersPage() {
          
       </div>
 
-      {/* {filteredUsers.length === 0 && (
+      {filteredUsers?.length === 0 && (
         <div className="text-center py-8">
           <UserPlus className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No users found</h3>
@@ -439,7 +452,7 @@ export default function UsersPage() {
               : "Get started by adding your first user"}
           </p>
         </div>
-      )} */}
+      )}
     </div>
   )
 }

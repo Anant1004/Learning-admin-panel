@@ -127,10 +127,9 @@ export const handleDeleteSubcategory = async (subcategoryId: number) => {
 };
 
 export const handleAddCourse = async (formData: any) => {
-    if (!formData.title.trim()) return;
-
+  console.log("course Form Data to send:", formData);
     try {
-        const newCourse = await apiClient("POST", "/courses", formData);
+        const newCourse = await apiClient("POST", "/course", formData);
 
         if (newCourse.ok) {
           toast.success(newCourse.message);
@@ -190,3 +189,18 @@ export const Adduser = async (formData: FormData) => {
   }
 };
 
+export const FetchInstructors = async () => {
+  try {
+    const res = await apiClient("GET", "/users");
+    if (res.ok) {
+      const filteredUsers = res.users.filter((user: any) => user.role === "instructor");
+      return filteredUsers;
+    } else {
+      console.error("Failed to fetch instructors");
+      return null;
+    }
+  } catch (err) {
+    console.error("Error fetching instructors:", err);
+    return null;
+  }
+};

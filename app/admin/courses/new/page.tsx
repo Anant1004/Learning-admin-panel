@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -14,130 +13,131 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Upload, Save, Eye, Plus, X } from "lucide-react"
 import Link from "next/link"
-import { apiClient } from "@/lib/api"
-
-const mockInstructors = [
-  { id: "inst1", name: "John Smith", email: "john@example.com" },
-  { id: "inst2", name: "Sarah Johnson", email: "sarah@example.com" },
-  { id: "inst3", name: "Mike Wilson", email: "mike@example.com" },
-]
-
-// const mockCategories = [
-//   { id: "cat1", name: "Programming" },
-//   { id: "cat2", name: "Design" },
-//   { id: "cat3", name: "Business" },
-//   { id: "cat4", name: "Marketing" },
-// ]
-
-// const mockSubCategories = [
-//   { id: "subcat1", name: "Web Development", categoryId: "cat1" },
-//   { id: "subcat2", name: "Mobile Development", categoryId: "cat1" },
-//   { id: "subcat3", name: "UI/UX Design", categoryId: "cat2" },
-//   { id: "subcat4", name: "Graphic Design", categoryId: "cat2" },
-// ]
-
-const mockSubjects = [
-  { id: "sub1", name: "JavaScript" },
-  { id: "sub2", name: "React" },
-  { id: "sub3", name: "Node.js" },
-  { id: "sub4", name: "Python" },
-]
+import { fetchCategories, FetchInstructors, fetchSubcategories, handleAddCourse } from "@/lib/function"
 
 export default function NewCoursePage() {
   const router = useRouter()
   const [categories, setCategories] = useState<any[]>([])
   const [subCategories, setSubCategories] = useState<any[]>([])
+  const [instructors, setInstructors] = useState<any[]>([])
+  
+  const [tempInputs, setTempInputs] = useState({
+    newTopic: "",
+    newLanguage: "",
+    newSubtitleLanguage: "",
+    newInstructor: "",
+    newSchedule: "",
+    newOutcome: ""
+  });
+  
   const [formData, setFormData] = useState({
     title: "",
     subtitle: "",
     description: "",
     categoryId: "",
     subCategoryId: "",
+    level: "",
+    paid: true,
+    actualPrice: "",
+    discountPrice: "",
+    duration: "",
+    startDate: "",
+    endDate: "",
+    status: "draft" as string,
     course_topic: [] as string[],
     course_languages: [] as string[],
     subtitle_language: [] as string[],
-    level: "beginner",
-    duration: "",
     instructorId: [] as string[],
-    paid: true,
-    startDate: "",
-    endDate: "",
-    actualPrice: "",
-    discountPrice: "",
     schedule: [] as string[],
     outcomes: [] as string[],
     faq: [{ question: "", answer: "" }] as Array<{ question: string; answer: string }>,
     thumbnail_url: "",
     video_url: "",
-    subjectId: "",
-    newTopic: "",
-    newLanguage: "",
-    newSubtitleLanguage: "",
-    newInstructor: "",
-    newSchedule: "",
-    newOutcome: "",
-    status: "draft",
   })
-  const fetchCategories = async () => {
-    try {
-      const res = await apiClient("GET", "/categories")
-      if (res.ok) {
-        setCategories(res.data)
-      } else {
-        console.log("Failed to fetch categories")
-      }
-    } catch (err) {
-      console.log("Error fetching categories:", err)
-    }
-  }
-  const fetchSubcategoryies = async (id:string) => {
-    try {
-      const res = await apiClient("GET", `/subcategories/${id}`)
-      if (res.ok) {
-        setSubCategories(res.data)
-      }
-    } catch (err) {
-      console.log("Error fetching subcategories:", err)
-    }
-  }
+  
   useEffect(() => {
-    fetchCategories()
-  }, [])
+  const loadCategories = async () => {
+    const data = await fetchCategories()
+    if (data) setCategories(data)
+  }
+  const loadInstructors = async () => {
+    const data = await FetchInstructors()
+    if (data) setInstructors(data)
+  }
+  loadCategories();
+  loadInstructors();
+}, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Creating course:", formData)
+    handleAddCourse(formData)
     router.push("/admin/courses")
   }
 
-  
-  const handleInputChange = (field: string, value: string | boolean | string[]) => {
-    if (field == "categoryId") {
-      fetchSubcategoryies(value as string)
-    }
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value === "default" ? "" : value,
-    }))
-  }
-
-  const addToArray = (field: keyof typeof formData, value: string, tempField: string) => {
-    if (value.trim()) {
-      const currentArray = formData[field] as string[]
+  const handleInputChange = (field: keyof typeof formData, value: any) => {
+    if (field === 'categoryId') {
       setFormData((prev) => ({
         ...prev,
-        [field]: [...currentArray, value.trim()],
-        [tempField]: "",
+        categoryId: value,
+        subCategoryId: "",
       }))
+      
+      const loadSubcategories = async () => {
+        const data = await fetchSubcategories(value)
+        if (data) setSubCategories(data)
+      }
+      loadSubcategories()
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value === "default" ? "" : value,
+      }))
+    }
+  }
+  
+  const handleTempInputChange = (field: keyof typeof tempInputs, value: string) => {
+    setTempInputs(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'thumbnail_url' | 'video_url') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setFormData(prev => ({
+        ...prev,
+        [field]: base64String
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const addToArray = (field: keyof typeof formData, value: string, tempField: keyof typeof tempInputs) => {
+    const trimmedValue = value.trim();
+    if (trimmedValue) {
+      const currentArray = Array.isArray(formData[field]) ? [...formData[field] as string[]] : [];
+      setFormData((prev) => ({
+        ...prev,
+        [field]: [...currentArray, trimmedValue],
+      }));
+      setTempInputs(prev => ({
+        ...prev,
+        [tempField]: ""
+      }));
     }
   }
 
   const removeFromArray = (field: keyof typeof formData, index: number) => {
-    const currentArray = formData[field] as string[]
+    const currentArray = Array.isArray(formData[field]) ? [...formData[field] as string[]] : [];
     setFormData((prev) => ({
       ...prev,
       [field]: currentArray.filter((_, i) => i !== index),
-    }))
+    }));
   }
 
   const addFAQ = () => {
@@ -247,33 +247,22 @@ export default function NewCoursePage() {
                         <SelectValue placeholder="Select subcategory" />
                       </SelectTrigger>
                       <SelectContent>
-                        {subCategories?.map((subcategory) => (
+                      {subCategories && subCategories.length > 0 ? (
+                        subCategories.map((subcategory) => (
                           <SelectItem key={subcategory._id} value={subcategory._id}>
                             {subcategory.name}
                           </SelectItem>
-                        ))}
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          None
+                        </SelectItem>
+                      )}
                       </SelectContent>
                     </Select>
-
-
                   </div>
                 </div>
 
-                {/* <div className="space-y-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Select value={formData.subjectId} onValueChange={(value) => handleInputChange("subjectId", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockSubjects.map((subject) => (
-                        <SelectItem key={subject.id} value={subject.id}>
-                          {subject.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div> */}
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -283,9 +272,9 @@ export default function NewCoursePage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="beginner">Beginner</SelectItem>
-                        <SelectItem value="intermediate">Intermediate</SelectItem>
-                        <SelectItem value="advanced">Advanced</SelectItem>
+                        <SelectItem value="Beginner">Beginner</SelectItem>
+                        <SelectItem value="Intermediate">Intermediate</SelectItem>
+                        <SelectItem value="Advanced">Advanced</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -400,19 +389,19 @@ export default function NewCoursePage() {
                   <div className="flex gap-2">
                     <Input
                       placeholder="Add a topic"
-                      value={formData.newTopic}
-                      onChange={(e) => handleInputChange("newTopic", e.target.value)}
+                      value={tempInputs.newTopic}
+                      onChange={(e) => handleTempInputChange("newTopic", e.target.value)}
                       onKeyPress={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault()
-                          addToArray("course_topic", formData.newTopic, "newTopic")
+                          addToArray("course_topic", tempInputs.newTopic, "newTopic")
                         }
                       }}
                     />
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => addToArray("course_topic", formData.newTopic, "newTopic")}
+                      onClick={() => addToArray("course_topic", tempInputs.newTopic, "newTopic")}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -432,19 +421,19 @@ export default function NewCoursePage() {
                   <div className="flex gap-2">
                     <Input
                       placeholder="Add a language"
-                      value={formData.newLanguage}
-                      onChange={(e) => handleInputChange("newLanguage", e.target.value)}
+                      value={tempInputs.newLanguage}
+                      onChange={(e) => handleTempInputChange("newLanguage", e.target.value)}
                       onKeyPress={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault()
-                          addToArray("course_languages", formData.newLanguage, "newLanguage")
+                          addToArray("course_languages", tempInputs.newLanguage, "newLanguage")
                         }
                       }}
                     />
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => addToArray("course_languages", formData.newLanguage, "newLanguage")}
+                      onClick={() => addToArray("course_languages", tempInputs.newLanguage, "newLanguage")}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -467,12 +456,12 @@ export default function NewCoursePage() {
                   <div className="flex gap-2">
                     <Input
                       placeholder="Add subtitle language"
-                      value={formData.newSubtitleLanguage}
-                      onChange={(e) => handleInputChange("newSubtitleLanguage", e.target.value)}
+                      value={tempInputs.newSubtitleLanguage}
+                      onChange={(e) => handleTempInputChange("newSubtitleLanguage", e.target.value)}
                       onKeyPress={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault()
-                          addToArray("subtitle_language", formData.newSubtitleLanguage, "newSubtitleLanguage")
+                          addToArray("subtitle_language", tempInputs.newSubtitleLanguage, "newSubtitleLanguage")
                         }
                       }}
                     />
@@ -480,7 +469,7 @@ export default function NewCoursePage() {
                       type="button"
                       variant="outline"
                       onClick={() =>
-                        addToArray("subtitle_language", formData.newSubtitleLanguage, "newSubtitleLanguage")
+                        addToArray("subtitle_language", tempInputs.newSubtitleLanguage, "newSubtitleLanguage")
                       }
                     >
                       <Plus className="h-4 w-4" />
@@ -510,18 +499,19 @@ export default function NewCoursePage() {
                 <div className="space-y-2">
                   <Label>Assign Instructors</Label>
                   <Select
-                    value={formData.newInstructor}
-                    onValueChange={(value) => handleInputChange("newInstructor", value)}
+                    value={tempInputs.newInstructor}
+                    onValueChange={(value) => handleTempInputChange("newInstructor", value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select an instructor" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockInstructors
-                        .filter((instructor) => !formData.instructorId.includes(instructor.id))
+                      {
+                        instructors
+                        .filter((instructor) => !formData.instructorId.includes(instructor._id))
                         .map((instructor) => (
-                          <SelectItem key={instructor.id} value={instructor.id}>
-                            {instructor.name} ({instructor.email})
+                          <SelectItem key={instructor._id} value={instructor._id}>
+                            {instructor.fullname} ({instructor.email})
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -530,11 +520,11 @@ export default function NewCoursePage() {
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      if (formData.newInstructor) {
-                        addToArray("instructorId", formData.newInstructor, "newInstructor")
+                      if (tempInputs.newInstructor) {
+                        addToArray("instructorId", tempInputs.newInstructor, "newInstructor")
                       }
                     }}
-                    disabled={!formData.newInstructor}
+                    disabled={!tempInputs.newInstructor}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Instructor
@@ -542,11 +532,11 @@ export default function NewCoursePage() {
                 </div>
                 <div className="space-y-2">
                   {formData.instructorId.map((instructorId, index) => {
-                    const instructor = mockInstructors.find((i) => i.id === instructorId)
+                    const instructor = instructors.find((i) => i._id === instructorId)
                     return (
                       <div key={index} className="flex items-center justify-between p-2 border rounded">
                         <span>
-                          {instructor?.name} ({instructor?.email})
+                          {instructor?.fullname} ({instructor?.email})
                         </span>
                         <Button
                           type="button"
@@ -574,19 +564,19 @@ export default function NewCoursePage() {
                   <div className="flex gap-2">
                     <Input
                       placeholder="Add schedule item (e.g., Mon-Wed-Fri 10:00 AM)"
-                      value={formData.newSchedule}
-                      onChange={(e) => handleInputChange("newSchedule", e.target.value)}
+                      value={tempInputs.newSchedule}
+                      onChange={(e) => handleTempInputChange("newSchedule", e.target.value)}
                       onKeyPress={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault()
-                          addToArray("schedule", formData.newSchedule, "newSchedule")
+                          addToArray("schedule", tempInputs.newSchedule, "newSchedule")
                         }
                       }}
                     />
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => addToArray("schedule", formData.newSchedule, "newSchedule")}
+                      onClick={() => addToArray("schedule", tempInputs.newSchedule, "newSchedule")}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -613,19 +603,19 @@ export default function NewCoursePage() {
                   <div className="flex gap-2">
                     <Input
                       placeholder="Add learning outcome"
-                      value={formData.newOutcome}
-                      onChange={(e) => handleInputChange("newOutcome", e.target.value)}
+                      value={tempInputs.newOutcome}
+                      onChange={(e) => handleTempInputChange("newOutcome", e.target.value)}
                       onKeyPress={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault()
-                          addToArray("outcomes", formData.newOutcome, "newOutcome")
+                          addToArray("outcomes", tempInputs.newOutcome, "newOutcome")
                         }
                       }}
                     />
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => addToArray("outcomes", formData.newOutcome, "newOutcome")}
+                      onClick={() => addToArray("outcomes", tempInputs.newOutcome, "newOutcome")}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -700,15 +690,45 @@ export default function NewCoursePage() {
                 </div>
 
                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <div className="mt-4">
-                    <Button variant="outline" type="button">
-                      Choose Thumbnail
-                    </Button>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      PNG, JPG up to 2MB. Recommended size: 1280x720px
-                    </p>
-                  </div>
+                  {formData.thumbnail_url ? (
+                    <div className="relative w-full h-40">
+                      <img
+                        src={formData.thumbnail_url}
+                        alt="Thumbnail preview"
+                        className="w-full h-full object-cover rounded-md"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute top-2 right-2 bg-white/80 hover:bg-white"
+                        onClick={() => handleInputChange("thumbnail_url", "")}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <label htmlFor="thumbnail-upload" className="cursor-pointer">
+                        <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <div className="mt-4">
+                          <Button variant="outline" type="button" asChild>
+                            <span>Choose Thumbnail</span>
+                          </Button>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            PNG, JPG up to 2MB. Recommended size: 1280x720px
+                          </p>
+                        </div>
+                        <input
+                          id="thumbnail-upload"
+                          type="file"
+                          accept="image/png, image/jpeg"
+                          onChange={(e) => handleFileUpload(e, 'thumbnail_url')}
+                          className="hidden"
+                        />
+                      </label>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

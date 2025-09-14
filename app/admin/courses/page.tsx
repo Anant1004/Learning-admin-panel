@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,77 +9,28 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Users, Clock, BookOpen } from "lucide-react"
-import type { Course } from "@/types"
+import { FetchCourses } from "@/lib/function"
 
-// Mock data for demonstration
-const mockCourses: Course[] = [
-  {
-    id: "1",
-    title: "Advanced React Patterns",
-    description: "Master advanced React concepts including hooks, context, and performance optimization",
-    thumbnail: "/react-course-thumbnail.jpg",
-    instructorId: "inst1",
-    instructor: {
-      id: "inst1",
-      name: "John Smith",
-      email: "john@example.com",
-      role: "instructor",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    status: "published",
-    price: 99.99,
-    duration: 40,
-    chapters: [],
-    createdAt: new Date("2024-01-15"),
-    updatedAt: new Date("2024-01-20"),
-  },
-  {
-    id: "2",
-    title: "Node.js Fundamentals",
-    description: "Learn server-side JavaScript development with Node.js and Express",
-    thumbnail: "/nodejs-course-thumbnail.jpg",
-    instructorId: "inst2",
-    instructor: {
-      id: "inst2",
-      name: "Sarah Johnson",
-      email: "sarah@example.com",
-      role: "instructor",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    status: "draft",
-    price: 79.99,
-    duration: 35,
-    chapters: [],
-    createdAt: new Date("2024-01-10"),
-    updatedAt: new Date("2024-01-18"),
-  },
-  {
-    id: "3",
-    title: "Python for Data Science",
-    description: "Complete guide to Python programming for data analysis and machine learning",
-    thumbnail: "/python-data-science-course.png",
-    instructorId: "inst1",
-    instructor: {
-      id: "inst1",
-      name: "John Smith",
-      email: "john@example.com",
-      role: "instructor",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    status: "published",
-    price: 129.99,
-    duration: 60,
-    chapters: [],
-    createdAt: new Date("2024-01-05"),
-    updatedAt: new Date("2024-01-15"),
-  },
-]
+interface Instructor {
+  _id: string
+  fullname: string
+  email?: string
+}
+
+interface Course {
+  id: string
+  title: string
+  description: string
+  thumbnail: string
+  duration: number
+  status: string
+  price: number
+  discountPrice?: number
+  instructor?: Instructor
+}
 
 export default function CoursesPage() {
-  const [courses] = useState<Course[]>(mockCourses)
+  const [courses, setCourses] = useState<Course[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
 
@@ -104,12 +55,36 @@ export default function CoursesPage() {
     }
   }
 
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const res = await FetchCourses()
+      console.log("Courses:", res)
+
+      if (res) {
+        const mapped = Object.values(res)
+          .filter((c: any) => c && c._id)
+          .map((c: any) => ({
+            id: c._id,
+            title: c.title,
+            description: c.description,
+            thumbnail: c.thumbnail_url || "/placeholder.svg",
+            duration: c.duration,
+            price: c.actualPrice,
+            discountPrice: c.discountPrice,
+            status: "published",
+            instructor: c.instructorId?.[0] || undefined,
+          }))
+        setCourses(mapped)
+      }
+    }
+    fetchCourses()
+  }, [])
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-balance">Courses</h1>
+          <h1 className="text-3xl font-bold">Courses</h1>
           <p className="text-muted-foreground">Manage your course catalog and content</p>
         </div>
         <Link href="/admin/courses/new">
@@ -120,7 +95,6 @@ export default function CoursesPage() {
         </Link>
       </div>
 
-      {/* Filters */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -145,17 +119,18 @@ export default function CoursesPage() {
         </Select>
       </div>
 
-      {/* Course Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredCourses.map((course) => (
           <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow">
             <div className="aspect-video relative overflow-hidden">
               <img
-                src={course.thumbnail || "/placeholder.svg"}
+                src={course.thumbnail}
                 alt={course.title}
                 className="object-cover w-full h-full"
               />
-              <Badge className={`absolute top-3 right-3 ${getStatusColor(course.status)}`}>{course.status}</Badge>
+              <Badge className={`absolute top-3 right-3 ${getStatusColor(course.status)}`}>
+                {course.status}
+              </Badge>
             </div>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -193,7 +168,7 @@ export default function CoursesPage() {
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Users className="h-4 w-4" />
-                    <span>{course.instructor?.name}</span>
+                    <span>{course.instructor?.fullname || "Unknown"}</span>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Clock className="h-4 w-4" />
@@ -201,7 +176,9 @@ export default function CoursesPage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold">${course.price}</span>
+                  <span className="text-lg font-semibold">
+                    ${course.discountPrice || course.price}
+                  </span>
                   <Link href={`/admin/courses/${course.id}/chapters`}>
                     <Button variant="outline" size="sm">
                       View Details

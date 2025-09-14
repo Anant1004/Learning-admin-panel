@@ -204,3 +204,18 @@ export const FetchInstructors = async () => {
     return null;
   }
 };
+
+export const FetchCourses = async () => {
+  try {
+    const res = await apiClient("GET", "/course");
+    if (res.ok) {
+      return res;
+    } else {
+      console.error("Failed to fetch courses");
+      return null;
+    }
+  } catch (err) {
+    console.error("Error fetching courses:", err);
+    return null;
+  }
+};

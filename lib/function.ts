@@ -219,3 +219,37 @@ export const FetchCourses = async () => {
     return null;
   }
 };
+
+export const uploadPDFfile = async (file: File) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await apiClient("POST", "/testSeries/uploadPDFfile", formData, true);
+    if (res.ok) {
+      return res;
+    } else {
+      console.error("Failed to upload file");
+      return null;
+    }
+  } catch (err) {
+    console.error("Error uploading file:", err);
+    return null;
+  }
+};
+
+export const uploadTestSeries = async (formData: FormData) => {
+  try {
+    const res = await apiClient("POST", "/testSeries", formData);
+    if (res.ok) {
+      toast.success(res.message);
+      return res;
+    } else {
+      toast.error(res.error || "Failed to add test series");
+      return null;
+    }
+  } catch (err) {
+    console.error("Failed to add test series:", err);
+    toast.error("Something went wrong");
+    return null;
+  }
+};

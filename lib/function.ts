@@ -253,3 +253,33 @@ export const uploadTestSeries = async (formData: FormData) => {
     return null;
   }
 };
+export const uploadNotification = async (formData: FormData) => {
+  try {
+    const res = await apiClient("POST", "/notifications", formData);
+    if (res.ok) {
+      toast.success(res.message);
+      return res;
+    } else {
+      toast.error(res.error || "Failed to add notification");
+      return null;
+    }
+  } catch (err) {
+    console.error("Failed to add notification:", err);
+    toast.error("Something went wrong");
+    return null;
+  }
+};
+export const fetchNotifications = async () => {
+  try {
+    const res = await apiClient("GET", "/notifications");
+    if (res.ok) {
+      return res;
+    } else {
+      console.error("Failed to fetch notifications");
+      return null;
+    }
+  } catch (err) {
+    console.error("Error fetching notifications:", err);
+    return null;
+  }
+};

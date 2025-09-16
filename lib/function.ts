@@ -2,64 +2,64 @@ import toast from "react-hot-toast";
 import { apiClient } from "./api";
 
 export const fetchCategories = async () => {
-    try {
-      const res = await apiClient("GET", "/categories");
-      if (res.ok) {
-        return res.data;
-      } else {
-        console.error("Failed to fetch categories");
-        return null;
-      }
-    } catch (err) {
-      console.error("Error fetching categories:", err);
+  try {
+    const res = await apiClient("GET", "/categories");
+    if (res.ok) {
+      return res.data;
+    } else {
+      console.error("Failed to fetch categories");
       return null;
     }
+  } catch (err) {
+    console.error("Error fetching categories:", err);
+    return null;
+  }
 };
-  
+
 export const fetchSubcategories = async (id: string) => {
-try {
+  try {
     const res = await apiClient("GET", `/subcategories/${id}`);
     if (res.ok) {
-    return res.data;
+      return res.data;
     } else {
-    console.error("Failed to fetch subcategories");
-    return null;
+      console.error("Failed to fetch subcategories");
+      return null;
     }
-} catch (err) {
+  } catch (err) {
     console.error("Error fetching subcategories:", err);
     return null;
-}
+  }
 };
 
 export const handleFetchCategoriesAndSubcategories = async () => {
-    try {
-      const res = await apiClient("GET", "/categories/with-subcategories");
-      return res?.categories || [];
-    } catch (err) {
-      console.error("Failed to fetch categories:", err);
-    }
+  try {
+    const res = await apiClient("GET", "/categories/with-subcategories");
+    return res?.categories || [];
+  } catch (err) {
+    console.error("Failed to fetch categories:", err);
+  }
 };
 
 export const handleAddCategory = async (categoryName: string, categoryDescription: string) => {
-    if (!categoryName.trim()) return;
+  if (!categoryName.trim()) return;
 
-    try {
-        const newCategory = await apiClient("POST", "/categories", {
-          name: categoryName,
-          description: categoryDescription,
-        });
+  try {
+    const newCategory = await apiClient("POST", "/categories", {
+      name: categoryName,
+      description: categoryDescription,
+    });
 
-        if (newCategory.ok) {
-          toast.success(newCategory.message);
-          return newCategory;
-        } else {
-          toast.error(newCategory.error);
-          return null;
-        }
-      } catch (err) {
-        console.error("Failed to add category:", err);
-        return null;
-      }
+    if (newCategory.ok) {
+      toast.success(newCategory.message);
+      return newCategory;
+    } else {
+      toast.error(newCategory.error);
+      return null;
+    }
+  } catch (err) {
+    console.error("Failed to add category:", err);
+    return null;
+  }
 };
 
 export const handleAddSubcategory = async (subcategoryName: string, subcategoryDescription: string, categoryId: string) => {
@@ -91,7 +91,7 @@ export const handleDeleteCategory = async (categoryId: number) => {
 
   try {
     const response = await apiClient("DELETE", `/categories/${categoryId}`);
-    
+
     if (response.ok) {
       toast.success(response.message || 'Category deleted successfully');
       return response;
@@ -111,7 +111,7 @@ export const handleDeleteSubcategory = async (subcategoryId: number) => {
 
   try {
     const response = await apiClient("DELETE", `/subcategories/${subcategoryId}`);
-    
+
     if (response.ok) {
       toast.success(response.message || 'Subcategory deleted successfully');
       return response;
@@ -128,20 +128,20 @@ export const handleDeleteSubcategory = async (subcategoryId: number) => {
 
 export const handleAddCourse = async (formData: any) => {
   console.log("course Form Data to send:", formData);
-    try {
-        const newCourse = await apiClient("POST", "/course", formData);
+  try {
+    const newCourse = await apiClient("POST", "/course", formData);
 
-        if (newCourse.ok) {
-          toast.success(newCourse.message);
-          return newCourse;
-        } else {
-          toast.error(newCourse.error);
-          return null;
-        }
-      } catch (err) {
-        console.error("Failed to add course:", err);
-        return null;
-      }
+    if (newCourse.ok) {
+      toast.success(newCourse.message);
+      return newCourse;
+    } else {
+      toast.error(newCourse.error);
+      return null;
+    }
+  } catch (err) {
+    console.error("Failed to add course:", err);
+    return null;
+  }
 };
 
 export const getRoleColor = (role: string) => {
@@ -174,18 +174,18 @@ export const Adduser = async (formData: FormData) => {
   const expertise = formData.get("expertise")?.toString().trim() || "";
 
   try {
-      const newUser = await apiClient("POST", "/users", formData, true);
-      if (newUser.ok) {
-        toast.success(newUser.message);
-        return newUser;
-      } else {
-        toast.error(newUser.error || "Failed to add user");
-        return null;
-      }
-  } catch (err) {
-      console.error("Failed to add user:", err);
-      toast.error("Something went wrong");
+    const newUser = await apiClient("POST", "/users", formData, true);
+    if (newUser.ok) {
+      toast.success(newUser.message);
+      return newUser;
+    } else {
+      toast.error(newUser.error || "Failed to add user");
       return null;
+    }
+  } catch (err) {
+    console.error("Failed to add user:", err);
+    toast.error("Something went wrong");
+    return null;
   }
 };
 
@@ -216,6 +216,35 @@ export const FetchCourses = async () => {
     }
   } catch (err) {
     console.error("Error fetching courses:", err);
+    return null;
+  }
+};
+
+
+export const handleAddChaptera = async ( courseId:string, name:string, description:string ) => {
+  try {
+    // Prepare the body we want to send
+    const body = {
+      chapter_name: name,
+      chapter_description: description,
+      courseId,
+    };
+
+    // Send POST request to create a chapter
+    const response = await apiClient("POST", "/chapters", body);
+    console.log("XXXXXXXX:",response)
+
+    // Check response (adjust according to your apiClient structure)
+    if (response.ok) {
+      toast.success(response.message || "Chapter created successfully");
+      return response;
+    } else {
+      toast.error(response?.message || "Failed to create chapter");
+      return null;
+    }
+  } catch (err) {
+    console.error("Failed to add chapter:", err);
+    toast.error("Something went wrong while adding chapter");
     return null;
   }
 };

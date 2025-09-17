@@ -283,3 +283,50 @@ export const fetchNotifications = async () => {
     return null;
   }
 };
+
+export const saveBanner = async ({
+  type,
+  file,
+  url,
+}: {
+  type: "website" | "app1" | "app2"
+  file: File
+  url?: string
+}) => {
+  try {
+    const formData = new FormData()
+    formData.append("type", type)
+    formData.append("image", file)
+    if (url) formData.append("url", url)
+
+    const res = await apiClient("POST", "/banners/save", formData, true)
+    if (res.ok) {
+      return res
+    } else {
+      console.error("Failed to save banner")
+      return null
+    }
+  } catch (err) {
+    console.error("Error saving banner:", err)
+    return null
+  }
+}
+
+export const fetchBanners = async () => {
+  try {
+    const res = await apiClient("GET", "/banners")
+    if (res.ok) {
+      return res
+    } else {
+      console.error("Failed to fetch banners")
+      return null
+    }
+  } catch (err) {
+    console.error("Error fetching banners:", err)
+    return null
+  }
+}
+
+export const deleteBanner = async (type: "website" | "app1" | "app2", bannerId: string) => {
+  return apiClient("DELETE", `/banners/${type}/${bannerId}`);
+};

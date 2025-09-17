@@ -20,7 +20,7 @@ export default function NewCoursePage() {
   const [categories, setCategories] = useState<any[]>([])
   const [subCategories, setSubCategories] = useState<any[]>([])
   const [instructors, setInstructors] = useState<any[]>([])
-  
+
   const [tempInputs, setTempInputs] = useState({
     newTopic: "",
     newLanguage: "",
@@ -29,7 +29,7 @@ export default function NewCoursePage() {
     newSchedule: "",
     newOutcome: ""
   });
-  
+
   const [formData, setFormData] = useState({
     title: "",
     subtitle: "",
@@ -54,24 +54,27 @@ export default function NewCoursePage() {
     thumbnail_url: "",
     video_url: "",
   })
-  
-  useEffect(() => {
-  const loadCategories = async () => {
-    const data = await fetchCategories()
-    if (data) setCategories(data)
-  }
-  const loadInstructors = async () => {
-    const data = await FetchInstructors()
-    if (data) setInstructors(data)
-  }
-  loadCategories();
-  loadInstructors();
-}, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const loadCategories = async () => {
+      const data = await fetchCategories()
+      if (data) setCategories(data)
+    }
+    const loadInstructors = async () => {
+      const data = await FetchInstructors()
+      if (data) setInstructors(data)
+    }
+    loadCategories();
+    loadInstructors();
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    handleAddCourse(formData)
-    router.push("/admin/courses")
+    const res = await handleAddCourse(formData)
+    if (res?.ok) {
+      router.push("/admin/courses")
+    }
+
   }
 
   const handleInputChange = (field: keyof typeof formData, value: any) => {
@@ -81,7 +84,7 @@ export default function NewCoursePage() {
         categoryId: value,
         subCategoryId: "",
       }))
-      
+
       const loadSubcategories = async () => {
         const data = await fetchSubcategories(value)
         if (data) setSubCategories(data)
@@ -94,7 +97,7 @@ export default function NewCoursePage() {
       }))
     }
   }
-  
+
   const handleTempInputChange = (field: keyof typeof tempInputs, value: string) => {
     setTempInputs(prev => ({
       ...prev,
@@ -247,17 +250,17 @@ export default function NewCoursePage() {
                         <SelectValue placeholder="Select subcategory" />
                       </SelectTrigger>
                       <SelectContent>
-                      {subCategories && subCategories.length > 0 ? (
-                        subCategories.map((subcategory) => (
-                          <SelectItem key={subcategory._id} value={subcategory._id}>
-                            {subcategory.name}
+                        {subCategories && subCategories.length > 0 ? (
+                          subCategories.map((subcategory) => (
+                            <SelectItem key={subcategory._id} value={subcategory._id}>
+                              {subcategory.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            None
                           </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="none" disabled>
-                          None
-                        </SelectItem>
-                      )}
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -316,7 +319,7 @@ export default function NewCoursePage() {
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="actualPrice">Actual Price ($)</Label>
+                    <Label htmlFor="actualPrice">Actual Price (₹)</Label>
                     <Input
                       id="actualPrice"
                       type="number"
@@ -329,7 +332,7 @@ export default function NewCoursePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="discountPrice">Discount Price ($)</Label>
+                    <Label htmlFor="discountPrice">Discount Price (₹)</Label>
                     <Input
                       id="discountPrice"
                       type="number"
@@ -508,12 +511,12 @@ export default function NewCoursePage() {
                     <SelectContent>
                       {
                         instructors
-                        .filter((instructor) => !formData.instructorId.includes(instructor._id))
-                        .map((instructor) => (
-                          <SelectItem key={instructor._id} value={instructor._id}>
-                            {instructor.fullname} ({instructor.email})
-                          </SelectItem>
-                        ))}
+                          .filter((instructor) => !formData.instructorId.includes(instructor._id))
+                          .map((instructor) => (
+                            <SelectItem key={instructor._id} value={instructor._id}>
+                              {instructor.fullname} ({instructor.email})
+                            </SelectItem>
+                          ))}
                     </SelectContent>
                   </Select>
                   <Button

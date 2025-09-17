@@ -30,12 +30,11 @@ import {
   Clock,
   Loader2,
   PlusCircle,
+  Video,
 } from "lucide-react"
-import type { Chapter, Lesson } from "@/types"
-import { describe } from "node:test"
-import { Description } from "@radix-ui/react-toast"
+// import type { Chapter, Lesson } from "@/types"
 import { handleAddChaptera } from "@/lib/function"
-import {toast} from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { apiClient } from "@/lib/api"
 // Mock data
 const mockCourse = {
@@ -44,132 +43,204 @@ const mockCourse = {
   description: "Master advanced React concepts including hooks, context, and performance optimization",
 }
 
-const mockChapters: (Chapter & { lessons: Lesson[] })[] = [
-  {
-    id: "ch1",
-    courseId: "1",
-    title: "Introduction to React Hooks",
-    description: "Learn the fundamentals of React hooks and how they work",
-    order: 1,
-    lessons: [
-      {
-        id: "l1",
-        chapterId: "ch1",
-        title: "useState Hook Basics",
-        description: "Understanding state management with useState",
-        order: 1,
-        videoUrl: "https://example.com/video1",
-        duration: 15,
-        materials: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: "l2",
-        chapterId: "ch1",
-        title: "useEffect Hook Deep Dive",
-        description: "Side effects and lifecycle management",
-        order: 2,
-        videoUrl: "https://example.com/video2",
-        duration: 20,
-        materials: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "ch2",
-    courseId: "1",
-    title: "Advanced Patterns",
-    description: "Explore advanced React patterns and best practices",
-    order: 2,
-    lessons: [
-      {
-        id: "l3",
-        chapterId: "ch2",
-        title: "Render Props Pattern",
-        description: "Implementing the render props pattern",
-        order: 1,
-        videoUrl: "https://example.com/video3",
-        duration: 25,
-        materials: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-]
-
-export default function CourseChaptersPage({ params }: { params: { id: string } }) {
-  const [chapters, setChapters] = useState(mockChapters)
-  const [isAddingChapter, setIsAddingChapter] = useState(false)
-  const [newChapter, setNewChapter] = useState({ title: "", description: "" })
-  const [expandedChapter, setExpandedChapter] = useState<string | null>(null)
-  const [ispendingaddchapter, setIsPendingAddChapter] = useState(false)
-  const handleAddChapter = async () => {
-  if (!newChapter.title.trim()) return;
-  setIsPendingAddChapter(true);
-  try {
-    const chapter: Chapter & { lessons: Lesson[] } = {
-      id: `ch${Date.now()}`,
-      courseId: params.id,
-      title: newChapter.title,
-      description: newChapter.description,
-      order: chapters.length + 1,
-      lessons: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    const res = await handleAddChaptera(
-      params.id,
-      newChapter.title,
-      newChapter.description
-    );
-    if (res?.success || res?.ok) {
-      setChapters((prev) => [...prev, chapter]);
-      setNewChapter({ title: "", description: "" });
-      setIsAddingChapter(false);
-    } else {
-      toast.error(res?.message || "Failed to create chapter");
-    }
-  } catch (err) {
-    console.error("Error adding chapter:", err);
-    toast.error("Something went wrong while adding the chapter");
-  } finally {
-    setIsPendingAddChapter(false);
-  }
-};
-
-const fetchGetChapterByCourseId=async()=>{
-  try{
-    const res = await apiClient("GET",`/chapters/${params.id}/bycourseid`)
-    if(res.ok)
-    {
-      setChapters(res.chapters)
-      console.log("fetched chapter by courseID",res)
-    }else{
-      toast.error(res.message)
-    }
-  }catch(e)
-  {
-    console.log("eeeeeerrrorr:",e)
-     toast.error("something went wrong")
-  }
+// const mockChapters: (Chapter & { lessons: Lesson[] })[] = [
+//   {
+//     id: "ch1",
+//     courseId: "1",
+//     title: "Introduction to React Hooks",
+//     description: "Learn the fundamentals of React hooks and how they work",
+//     order: 1,
+//     lessons: [
+//       {
+//         id: "l1",
+//         chapterId: "ch1",
+//         title: "useState Hook Basics",
+//         description: "Understanding state management with useState",
+//         order: 1,
+//         videoUrl: "https://example.com/video1",
+//         duration: 15,
+//         materials: [],
+//         createdAt: new Date(),
+//         updatedAt: new Date(),
+//       },
+//       {
+//         id: "l2",
+//         chapterId: "ch1",
+//         title: "useEffect Hook Deep Dive",
+//         description: "Side effects and lifecycle management",
+//         order: 2,
+//         videoUrl: "https://example.com/video2",
+//         duration: 20,
+//         materials: [],
+//         createdAt: new Date(),
+//         updatedAt: new Date(),
+//       },
+//     ],
+//     createdAt: new Date(),
+//     updatedAt: new Date(),
+//   },
+//   {
+//     id: "ch2",
+//     courseId: "1",
+//     title: "Advanced Patterns",
+//     description: "Explore advanced React patterns and best practices",
+//     order: 2,
+//     lessons: [
+//       {
+//         id: "l3",
+//         chapterId: "ch2",
+//         title: "Render Props Pattern",
+//         description: "Implementing the render props pattern",
+//         order: 1,
+//         videoUrl: "https://example.com/video3",
+//         duration: 25,
+//         materials: [],
+//         createdAt: new Date(),
+//         updatedAt: new Date(),
+//       },
+//     ],
+//     createdAt: new Date(),
+//     updatedAt: new Date(),
+//   },
+// ]
+// types/course.ts
+interface Lesson {
+  id: string;
+  chapterId: string;
+  title: string;
+  description: string;
+  order: number;
+  videoUrl: string;
+  duration: number;
+  materials: string[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-useEffect(()=>{
-   fetchGetChapterByCourseId()
-},[params.id])
+interface Chapter {
+  _id: string;
+  chapter_name: string;
+  chapter_description: string;
+  courseId: string;
+  order: number;
+  lessons: Lesson[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+
+
+export default function CourseChaptersPage({ params }: { params: { id: string } }) {
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [isAddingChapter, setIsAddingChapter] = useState<boolean>(false);
+  const [newChapter, setNewChapter] = useState<{ title: string; description: string }>({
+    title: "",
+    description: "",
+  });
+  const [coursedetails, setCourseDetails] = useState({ title: '', subtitle: "", description: "", totalLessons: "", totalMaterials: "" })
+  const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
+  const [ispendingaddchapter, setIsPendingAddChapter] = useState<boolean>(false);
+  const [iframeUrl, setIframeUrl] = useState("");
+  const [openModal, setOpenModal] = useState(false);
+  const [isdialogopenforupdatechapter,setIsDialogOpenForUpdateChapter] = useState(false)
+  const handleAddChapter = async (): Promise<void> => {
+    if (!newChapter.title.trim()) return;
+    setIsPendingAddChapter(true);
+
+    try {
+      const chapter: Chapter = {
+        _id: `ch${Date.now()}`,
+        chapter_name: newChapter.title,
+        chapter_description: newChapter.description,
+        courseId: params.id,
+        order: chapters.length + 1,
+        lessons: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const res = await handleAddChaptera(params.id, newChapter.title, newChapter.description);
+
+      if (res?.success || res?.ok) {
+        setChapters((prev) => [...prev, chapter]);
+        setNewChapter({ title: "", description: "" });
+        setIsAddingChapter(false);
+      } else {
+        toast.error(res?.message || "Failed to create chapter");
+      }
+    } catch (err) {
+      console.error("Error adding chapter:", err);
+      toast.error("Something went wrong while adding the chapter");
+    } finally {
+      setIsPendingAddChapter(false);
+    }
+  };
+
+  const handleDialogOpenForUpdateChapter=(chapterid:string)=>
+  {
+    // alert(chapterid)
+    // setOpenModal(true)
+    setIsAddingChapter(true)
+  }
+
+
+  const fetchGetChapterByCourseId = async (): Promise<void> => {
+    try {
+      const res = await apiClient("GET", `/chapters/${params.id}/bycourseid`);
+      if (res.ok) {
+        setCourseDetails({ title: res.title, subtitle: res.subtitle, description: res.description, totalLessons: res.totalLessons, totalMaterials: res.totalMaterials })
+        setChapters(res.chapters as Chapter[]);
+        console.log("Fetched chapters:", res.chapters);
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e) {
+      console.error("Error fetching chapters:", e);
+      toast.error("Something went wrong");
+    }
+  };
+
+  useEffect(() => {
+    fetchGetChapterByCourseId()
+  }, [params.id])
 
 
   const getTotalDuration = (lessons: Lesson[]) => {
     return lessons?.reduce((total, lesson) => total + lesson?.duration, 0) || 0
   }
+
+  const getYouTubeEmbedUrl = (url: string) => {
+    try {
+      const parsedUrl = new URL(url);
+      let videoId = "";
+
+      // Check for watch?v= param
+      if (parsedUrl.searchParams.has("v")) {
+        videoId = parsedUrl.searchParams.get("v") || "";
+      }
+
+      // Short URL like youtu.be/VIDEOID
+      if (parsedUrl.hostname.includes("youtu.be")) {
+        videoId = parsedUrl.pathname.substring(1);
+      }
+
+      // Agar videoId mila to embed URL return karo
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+
+      return url; // agar YouTube nahi hai to original return karo
+    } catch {
+      return url;
+    }
+  };
+
+  // Iframe open function (Final)
+  const openInIframe = (url: string) => {
+    const finalUrl = getYouTubeEmbedUrl(url);
+    setIframeUrl(finalUrl);
+    setOpenModal(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -181,8 +252,8 @@ useEffect(()=>{
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-balance">{mockCourse.title}</h1>
-          <p className="text-muted-foreground">Manage course content and structure</p>
+          <h1 className="text-3xl font-bold text-balance">{coursedetails.title}</h1>
+          <p className="text-muted-foreground">{coursedetails.description}</p>
         </div>
         <Dialog open={isAddingChapter} onOpenChange={setIsAddingChapter}>
           <DialogTrigger asChild>
@@ -252,6 +323,7 @@ useEffect(()=>{
             </div>
             <div className="text-2xl font-bold">
               {/* {chapters?.reduce((total, chapter) => total + chapter?.lessons?.length, 0)} */}
+              {coursedetails?.totalLessons}
             </div>
           </CardContent>
         </Card>
@@ -262,7 +334,7 @@ useEffect(()=>{
               <span className="text-sm text-muted-foreground">Total Duration</span>
             </div>
             <div className="text-2xl font-bold">
-              {chapters.reduce((total, chapter) => total + getTotalDuration(chapter.lessons), 0)}m
+              {chapters.reduce((total: any, chapter: any) => total + getTotalDuration(chapter.lessons), 0)}m
             </div>
           </CardContent>
         </Card>
@@ -273,11 +345,12 @@ useEffect(()=>{
               <span className="text-sm text-muted-foreground">Materials</span>
             </div>
             <div className="text-2xl font-bold">
-              {/* {chapters.reduce(
+              {chapters.reduce(
                 (total, chapter) =>
                   total + chapter.lessons.reduce((lessonTotal, lesson) => lessonTotal + lesson.materials.length, 0),
                 0,
-              )} */}
+              )}
+              {/* {coursedetails?.totalMaterials} */}
             </div>
           </CardContent>
         </Card>
@@ -285,7 +358,7 @@ useEffect(()=>{
 
       {/* Chapters List */}
       <div className="space-y-4">
-        {chapters.map((chapter, index) => (
+        {chapters.map((chapter: any, index: number) => (
           <Card key={chapter._id} className="overflow-hidden">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -314,12 +387,12 @@ useEffect(()=>{
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={()=>handleDialogOpenForUpdateChapter(chapter._id)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Chapter
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/admin/courses/${params.id}/chapters/${chapter.id}/lessons`}>
+                        <Link href={`/admin/courses/${params.id}/chapters/${chapter._id}/lessons/new`}>
                           <Plus className="mr-2 h-4 w-4" />
                           Add Lesson
                         </Link>
@@ -349,8 +422,8 @@ useEffect(()=>{
 
                   {chapter?.lessons?.length > 0 ? (
                     <div className="space-y-2">
-                      {chapter.lessons.map((lesson, lessonIndex) => (
-                        <div key={lesson.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      {chapter.lessons.map((lesson: any, lessonIndex: number) => (
+                        <div key={lesson._id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center gap-3">
                             <Badge variant="outline" className="text-xs">
                               {lessonIndex + 1}
@@ -358,8 +431,32 @@ useEffect(()=>{
                             <div>
                               <p className="font-medium">{lesson.title}</p>
                               <p className="text-sm text-muted-foreground">{lesson.description}</p>
+
+                              {/* Video & PDF Buttons */}
+                              <div className="flex gap-2 mt-2">
+                                {lesson.video_url && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openInIframe(lesson.video_url)}
+                                  >
+                                    <Video className="h-4 w-4 mr-1" /> Open Video
+                                  </Button>
+                                )}
+                                {lesson.materials?.map((mat: any, i: number) => (
+                                  <Button
+                                    key={i}
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openInIframe(mat.material_url)}
+                                  >
+                                    <FileText className="h-4 w-4 mr-1" /> {mat.material_title || "Open PDF"}
+                                  </Button>
+                                ))}
+                              </div>
                             </div>
                           </div>
+
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-muted-foreground">{lesson.duration}m</span>
                             <DropdownMenu>
@@ -371,7 +468,7 @@ useEffect(()=>{
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild>
                                   <Link
-                                    href={`/admin/courses/${params.id}/chapters/${chapter.id}/lessons/${lesson.id}`}
+                                    href={`/admin/courses/${params.id}/chapters/${chapter._id}/lessons/${lesson._id}`}
                                   >
                                     <Edit className="mr-2 h-4 w-4" />
                                     Edit Lesson
@@ -391,13 +488,28 @@ useEffect(()=>{
                     <div className="text-center py-8 text-muted-foreground">
                       <PlayCircle className="mx-auto h-8 w-8 mb-2" />
                       <p>No lessons in this chapter yet</p>
-                      <Link href={`/admin/courses/${params.id}/chapters/${chapter.id}/lessons/new`}>
+                      <Link href={`/admin/courses/${params.id}/chapters/${chapter._id}/lessons/new`}>
                         <Button variant="outline" size="sm" className="mt-2 bg-transparent">
                           Add First Lesson
                         </Button>
                       </Link>
                     </div>
                   )}
+
+                  {/* Iframe Modal */}
+                  <Dialog open={openModal} onOpenChange={setOpenModal}>
+                    <DialogContent className="max-w-4xl h-[80vh]">
+                      <DialogHeader>
+                        <DialogTitle>Preview</DialogTitle>
+                      </DialogHeader>
+                      <iframe
+                        src={iframeUrl}
+                        className="w-full h-[180%] rounded-md mt-[-250px]"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                      ></iframe>
+                    </DialogContent>
+                  </Dialog>
+
                 </div>
               </CardContent>
             )}

@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { act, useRef, useState } from "react"
+import {useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -11,11 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Upload, Save, FileText, BookOpen, PenTool, Paperclip, Loader2 } from "lucide-react"
+import { ArrowLeft, FileText, BookOpen, PenTool, Paperclip, Loader2 } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { toast } from "react-hot-toast";
 import axios from "axios"
-import { Progress } from "@/components/ui/progress"
 
 export default function NewLessonPage({
   params,
@@ -23,10 +21,7 @@ export default function NewLessonPage({
   params: { id: string; chapterId: string }
 }) {
   const router = useRouter()
-  const fileInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState("basic");
-  const [ispendingbasicdetails, setIsPendingBasicDetails] = useState<boolean>(false)
-  const [lessonid, setLessonId] = useState<string>()
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -35,135 +30,21 @@ export default function NewLessonPage({
   })
   const [videocontentformdata, setVideoContentFormData] = useState({
     video_url: "",
-    video: null
+    video_thumnail: ""
   })
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-
+  const [isUploading, setIsUploading] = useState<any>({});
+  const [isPendingSubmit, setPendingSubmit] = useState(false)
 
   const [materials, setMaterials] = useState<
     Array<{
-      type: "notes" | "pdf" | "assignment"
-      title: string
-      file?: File
+      material_type: "notes" | "pdf" | "assignment"
+      material_title: string
+      file?: File,
+      url?: string,
+      public_id?: string
     }>
   >([])
-
-
-  // Button click pe file chooser open karo
-  const handleChooseFile = () => {
-    fileInputRef.current.click();
-  };
-
-  // File change hone par handle karo
-  const handleFileChange = async (e: any) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      setIsUploading(true);
-      setUploadProgress(0);
-      // 1. Backend se signature lo
-      const data = await apiClient("GET", "/get-signature");
-      // 2. Directly Cloudinary pe upload karo
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("api_key", data.apiKey);
-      formData.append("timestamp", data.timestamp);
-      formData.append("signature", data.signature);
-      formData.append("folder", data.folder);
-
-      const uploadRes = await axios.post(
-        `https://api.cloudinary.com/v1_1/${data.cloudName}/auto/upload`,
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-          onUploadProgress: (progressEvent) => {
-            const percent = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            setUploadProgress(percent);
-          },
-        }
-      );
-
-      // setVideoURL(uploadRes.data.secure_url); // Cloudinary URL mil gaya
-      setVideoContentFormData((prev) => ({
-        ...prev,
-        video: uploadRes.data.secure_url
-      }));
-      console.log("Video uploaded:", uploadRes.data.secure_url);
-
-      // Ab ye URL database me save kar sakte ho backend API se
-    } catch (err) {
-      console.error("Upload error:", err);
-    } finally {
-      setIsUploading(false);
-    }
-    console.log("Selected file:", file);
-    // Yahan tum Cloudinary pe upload kar sakte ho
-  };
-  // console.log("EEEEEEEEEEEEEEEE:", videocontentformdata)
-
-  console.log("chapter id aur course ID", params)
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    // console.log("Creating lesson:", formData, materials)
-    if (activeTab == "video") {
-      if (!videocontentformdata.video) {
-        const confirmUpload = window.confirm("Kya aap bina video ke aage badhna chahte ho?");
-        if (confirmUpload) {
-          try {
-            const res = await apiClient("PUT", `/lesson/68c92b10dc84b89680aef406`, { video_url: videocontentformdata.video_url, video: videocontentformdata.video })
-            if (res.ok) {
-              toast.success("yes it is uploaded")
-              setActiveTab("materials")
-            }
-          } catch (error) {
-            console.log("ERROR", error)
-          }
-        }
-        else {
-          return
-        }
-      }
-
-    }
-
-    if (activeTab == "basic") {
-      try {
-        setIsPendingBasicDetails(true)
-        const res = await apiClient("POST", `/lesson`, {
-          title: formData.title,
-          description: formData.description,
-          duration: Number(formData.duration),
-          chapterId: params.chapterId,
-          courseId: params.id
-        })
-        if (res.ok) {
-          toast.success(res.message)
-          setActiveTab("video")
-          console.log("LESSION HAS BEEN CREATED:", res)
-          setFormData({
-            title: "",
-            description: "",
-            duration: "",
-          })
-        }
-      } catch (error) {
-        console.log("ERROR", error)
-      }
-      finally {
-        setIsPendingBasicDetails(false)
-      }
-    }
-
-    if (activeTab == "materials") {
-
-      alert("ready to upload pdf aur something")
-    }
-
-    // router.push(`/admin/courses/${params.id}/chapters`)
-  }
+  const [openDialogUrl, setOpenDialogUrl] = useState<any>(null);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -172,18 +53,33 @@ export default function NewLessonPage({
     setVideoContentFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const addMaterial = (type: "notes" | "pdf" | "assignment") => {
-    setMaterials((prev) => [...prev, { type, title: "" }])
+  const addMaterial = (material_type: "notes" | "pdf" | "assignment") => {
+    setMaterials((prev) => [...prev, { material_type, material_title: "" }])
   }
-  console.log("XXXXXXXXXXXXXMATERIALS:", materials)
 
   const updateMaterial = (index: number, field: string, value: string) => {
     setMaterials((prev) => prev.map((material, i) => (i === index ? { ...material, [field]: value } : material)))
   }
 
-  const removeMaterial = (index: number) => {
-    setMaterials((prev) => prev.filter((_, i) => i !== index))
-  }
+  const removeMaterial = async (index: number) => {
+    const materialToRemove = materials[index];
+
+    if (materialToRemove?.public_id) {
+      try {
+        setIsUploading((prev:any) => ({ ...prev, [index]: true }));
+        await apiClient("POST", "/signature", {
+          public_id: materialToRemove.public_id,
+        });
+
+      } catch (err) {
+        console.error("Cloudinary delete error:", err);
+      }
+      finally {
+        setIsUploading((prev:any) => ({ ...prev, [index]: false }));
+      }
+    }
+    setMaterials((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const getMaterialIcon = (type: string) => {
     switch (type) {
@@ -200,55 +96,161 @@ export default function NewLessonPage({
     }
   }
 
-const handleMaterialFile = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
 
+  const handleOpenImageDialog = (url: any) => {
+    setOpenDialogUrl(url);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialogUrl(null);
+  };
+
+const isValidYouTubeUrl = (url: any) => {
   try {
-    // setIsUploading(true);
-    // setUploadProgress(0);
+    const parsedUrl = new URL(url);
+    const host = parsedUrl.hostname.toLowerCase();
 
-    // 1. Backend se signature lo
-    const data = await apiClient("GET", "/get-signature");
+    const validHosts = [
+      "youtube.com",
+      "www.youtube.com",
+      "m.youtube.com",
+      "youtu.be",
+      "www.youtu.be"
+    ];
 
-    // 2. Directly Cloudinary pe upload karo
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("api_key", data.apiKey);
-    formData.append("timestamp", data.timestamp);
-    formData.append("signature", data.signature);
-    formData.append("folder", data.folder);
+    if (!validHosts.includes(host)) return false;
 
-    const uploadRes = await axios.post(
-      `https://api.cloudinary.com/v1_1/${data.cloudName}/auto/upload`,
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (progressEvent) => {
-          const percent = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          // setUploadProgress(percent);
-        },
-      }
-    );
+    if (host.includes("youtu.be")) {
+      const id = parsedUrl.pathname.slice(1);
+      return id.length === 11;
+    }
 
-    // Update the specific material in the array
-    setMaterials((prev) =>
-      prev.map((mat, i) =>
-        i === index ? { ...mat, file: file, url: uploadRes.data.secure_url } : mat
-      )
-    );
-
-    console.log("Material uploaded:", uploadRes.data.secure_url);
-  } catch (err) {
-    console.log("Upload error:", err);
-  } finally {
-    setIsUploading(false);
+    const videoId = parsedUrl.searchParams.get("v");
+    return !!videoId && videoId.length === 11;
+  } catch {
+    return false;
   }
 };
 
-  // Cloudinary URL mil gaya  }
+const isValidUrl = (url: any) => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+  const handleMaterialFile = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setPendingSubmit(true)
+      setIsUploading((prev:any) => ({ ...prev, [index]: true }));
+      const data = await apiClient("GET", "/signature");
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("api_key", data.apiKey);
+      formData.append("timestamp", data.timestamp);
+      formData.append("signature", data.signature);
+      formData.append("folder", data.folder);
+
+      const uploadRes = await axios.post(
+        `https://api.cloudinary.com/v1_1/${data.cloudName}/auto/upload`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
+      setMaterials((prev) =>
+        prev.map((mat, i) =>
+          i === index ? { ...mat, file: file, url: uploadRes.data.secure_url, public_id: uploadRes.data.public_id } : mat
+        )
+      );
+
+    } catch (err) {
+      console.log("Upload error:", err);
+    } finally {
+      setIsUploading((prev:any) => ({ ...prev, [index]: false }));
+      setPendingSubmit(false)
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (activeTab === "basic") {
+      if (formData.title.trim() && formData.description.trim() && formData.duration) {
+        setActiveTab("video");
+      } else {
+        toast.error("Please Fill all fields of basic section!");
+      }
+    }
+    else if (activeTab === "video") {
+      const videoUrl = videocontentformdata.video_url.trim();
+      const videoThumbnail = videocontentformdata.video_thumnail.trim();
+
+      if (!videoUrl || !videoThumbnail) {
+        toast.error("Both fields are required");
+        return;
+      }
+
+      if (!isValidYouTubeUrl(videoUrl)) {
+        toast.error("Please enter a valid YouTube video URL");
+        return;
+      }
+
+      if (!isValidUrl(videoThumbnail)) {
+        toast.error("Please enter a valid URL for video thumbnail");
+        return;
+      }
+
+      setActiveTab("materials");
+    }
+    else if (activeTab === "materials") {
+      if (materials.length > 0) {
+        try {
+          const body = {
+            title: formData.title,
+            description: formData.description,
+            duration: formData.duration,
+            video_url: videocontentformdata.video_url,
+            video_thumnail: videocontentformdata.video_thumnail,
+            materials,
+            chapterId: params.chapterId,
+            courseId: params.id,
+          };
+
+          const res = await apiClient("POST", "/lesson", body);
+          if (res.ok) {
+            toast.success("Lesson is successfully created!");
+            setFormData({
+              title: "",
+              description: "",
+              duration: "",
+            });
+
+            setVideoContentFormData({
+              video_url: "",
+              video_thumnail: "",
+            });
+
+            setMaterials([]);
+            router.push(`/admin/courses/${params.id}/chapters`)
+          }
+        } catch (error: any) {
+          toast.error(error);
+        }
+      } else {
+        toast.error("Please upload notes, PDF, or assignment!");
+      }
+    }
+  };
+
+
+
 
   return (
     <div className="space-y-6">
@@ -335,47 +337,16 @@ const handleMaterialFile = async (e: React.ChangeEvent<HTMLInputElement>, index:
                   />
                 </div>
 
-                <div className="text-center">
-                  <p className="text-muted-foreground mb-4">Or upload a video file</p>
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
-                    <input
-                      type="file"
-                      accept="video/mp4,video/webm"
-                      className="hidden"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                    />
-                    <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <div className="mt-4">
-                      <Button variant="outline" type="button"
-                        onClick={handleChooseFile}
-                      >
-                        Choose Video File
-                      </Button>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        MP4, WebM up to 500MB
-                      </p>
-                    </div>
-                  </div>
-
-                  {isUploading && (
-                    <div className="w-full mt-1.5">
-                      <Progress value={uploadProgress} />
-                      <p className="mt-2 text-sm">{uploadProgress}% uploaded</p>
-                    </div>
-                  )}
-                  {!isUploading && videocontentformdata.video && (
-                    <div className="mt-4 ">
-                      <p className="text-green-600 text-sm">Upload complete!</p>
-                      <video
-                        src={videocontentformdata.video}
-                        controls
-                        preload="metadata"
-                        className="w-full h-64 rounded-lg mt-2 object-contain bg-black" onError={() => console.log("Video load error")}
-                      />
-                    </div>
-                  )}
+                <div className="space-y-2">
+                  <Label htmlFor="videoUrl">Video Thumnail URL</Label>
+                  <Input
+                    id="thumnail_url"
+                    placeholder="https://example.com/video.mp4 or YouTube/Vimeo URL"
+                    value={videocontentformdata.video_thumnail}
+                    onChange={(e) => handleInputChangeVideo("video_thumnail", e.target.value)}
+                  />
                 </div>
+
               </CardContent>
             </Card>
           </TabsContent>
@@ -397,10 +368,6 @@ const handleMaterialFile = async (e: React.ChangeEvent<HTMLInputElement>, index:
                     <BookOpen className="mr-2 h-4 w-4" />
                     Add Notes
                   </Button>
-                  {/* <Button type="button" variant="outline" onClick={() => addMaterial("dpp")} className="justify-start">
-                    <PenTool className="mr-2 h-4 w-4" />
-                    Add DPP
-                  </Button> */}
                   <Button type="button" variant="outline" onClick={() => addMaterial("pdf")} className="justify-start">
                     <FileText className="mr-2 h-4 w-4" />
                     Add PDF
@@ -421,18 +388,74 @@ const handleMaterialFile = async (e: React.ChangeEvent<HTMLInputElement>, index:
                     <h4 className="font-medium">Added Materials</h4>
                     {materials.map((material, index) => (
                       <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                        {getMaterialIcon(material.type)}
+                        {getMaterialIcon(material.material_type)}
                         <div className="flex-1">
                           <Input
-                            placeholder={`${material.type.charAt(0).toUpperCase() + material.type.slice(1)} title`}
-                            value={material.title}
-                            onChange={(e) => updateMaterial(index, "title", e.target.value)}
+                            placeholder={`${material.material_type.charAt(0).toUpperCase() + material.material_type.slice(1)} title`}
+                            value={material.material_title}
+                            onChange={(e) => updateMaterial(index, "material_title", e.target.value)}
                           />
                         </div>
-                        <Button type="button" variant="outline" size="sm" >
-                          <input type="file" name="material_url" className="w-8"  onChange={(e) => handleMaterialFile(e, index)} />
-                          Upload File
-                        </Button>
+
+                        <div className="flex items-center space-x-4 my-2">
+                          {isUploading[index] ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Button type="button" variant="outline" size="sm">
+                              <input
+                                type="file"
+                                name="material_url"
+                                accept="application/pdf"
+                                // required
+                                className="w-8"
+                                onChange={(e) => handleMaterialFile(e, index)}
+                              />
+                              Upload File
+                            </Button>
+                          )}
+
+                          {materials[index]?.file && materials[index]?.url && (
+                            <>
+                              <span>{materials[index].file.name.slice(0, 3)}...</span>
+                              <button
+                                onClick={() => handleOpenImageDialog(materials[index].url)}
+                                className="ml-2 px-2 py-1 bg-blue-500 text-white rounded text-sm"
+                              >
+                                Open
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        {openDialogUrl && (
+                          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white p-4 rounded shadow-lg max-w-3xl max-h-[90vh] overflow-auto">
+                              <button
+                                onClick={handleCloseDialog}
+                                className="mb-4 px-2 py-1 bg-red-500 text-white rounded"
+                              >
+                                Close
+                              </button>
+
+                              {/* PDF or Image Display */}
+                              {openDialogUrl.endsWith('.pdf') ? (
+                                <iframe
+                                  src={openDialogUrl}
+                                  width="700vw"
+                                  height="580px"
+                                  title="PDF Preview"
+                                />
+                              ) : (
+                                <img
+                                  src={openDialogUrl}
+                                  alt="Material Preview"
+                                  className="max-w-full max-h-[80vh] object-contain"
+                                />
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+
                         <Button
                           type="button"
                           variant="ghost"
@@ -464,13 +487,8 @@ const handleMaterialFile = async (e: React.ChangeEvent<HTMLInputElement>, index:
           <Link href={`/admin/courses/${params.id}/chapters`}>
             <Button variant="outline">Cancel</Button>
           </Link>
-          <Button type="submit">
-            {ispendingbasicdetails ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            {ispendingbasicdetails ? activeTab == "basic" ? "Creating..." : activeTab == "video" ? "uploading..." : "Lesson Materials Saving..." : activeTab == "basic" ? "Create Lesson And Next" : activeTab == "video" ? "Save Video And Next" : "Save Materials"}
+          <Button type="submit" disabled={isPendingSubmit}>
+            {activeTab == "basic" ? "Next To Video" : activeTab == "video" ? "Next To Materials" : "Submit"}
           </Button>
         </div>
       </form>

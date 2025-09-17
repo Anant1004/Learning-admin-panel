@@ -1,10 +1,11 @@
 import toast from "react-hot-toast";
 import { apiClient } from "./api";
+import { useRouter } from "next/navigation"
 
 export const fetchCategories = async () => {
   try {
     const res = await apiClient("GET", "/categories");
-    if (res.ok) {
+    if (res?.ok) {
       return res.data;
     } else {
       console.error("Failed to fetch categories");
@@ -19,7 +20,7 @@ export const fetchCategories = async () => {
 export const fetchSubcategories = async (id: string) => {
   try {
     const res = await apiClient("GET", `/subcategories/${id}`);
-    if (res.ok) {
+    if (res?.ok) {
       return res.data;
     } else {
       console.error("Failed to fetch subcategories");
@@ -136,12 +137,32 @@ export const handleAddCourse = async (formData: any) => {
       return newCourse;
     } else {
       toast.error(newCourse.error);
-      return null;
+      return newCourse.error;
     }
-  } catch (err) {
-    console.error("Failed to add course:", err);
-    return null;
+  } catch (err: any) {
+  console.log("Failed to add course:", err);
+
+  // By default backend string bhej raha hai → convert to array
+  let errorsArray: any[] = [];
+  
+  if (typeof err === "string") {
+    try {
+      errorsArray = JSON.parse(err);  // String → Array
+    } catch (e) {
+      console.error("Error parsing error string:", e);
+    }
+  } else if (Array.isArray(err)) {
+    errorsArray = err;
   }
+
+  // Ab safe hai, array me hamesha messages milenge
+  if (Array.isArray(errorsArray)) {
+    errorsArray.forEach((e: any) => toast.error(e.message));
+  }
+
+}
+
+
 };
 
 export const getRoleColor = (role: string) => {
@@ -216,6 +237,40 @@ export const FetchCourses = async () => {
     }
   } catch (err) {
     console.error("Error fetching courses:", err);
+    return null;
+  }
+};
+
+export const uploadPDFfile = async (file: File) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await apiClient("POST", "/testSeries/uploadPDFfile", formData, true);
+    if (res.ok) {
+      return res;
+    } else {
+      console.error("Failed to upload file");
+      return null;
+    }
+  } catch (err) {
+    console.error("Error uploading file:", err);
+    return null;
+  }
+};
+
+export const uploadTestSeries = async (formData: FormData) => {
+  try {
+    const res = await apiClient("POST", "/testSeries", formData);
+    if (res.ok) {
+      toast.success(res.message);
+      return res;
+    } else {
+      toast.error(res.error || "Failed to add test series");
+      return null;
+    }
+  } catch (err) {
+    console.error("Failed to add test series:", err);
+    toast.error("Something went wrong");
     return null;
   }
 };

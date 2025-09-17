@@ -13,14 +13,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Upload, Save, Eye, Plus, FileText, Trash2 } from "lucide-react"
 import Link from "next/link"
+import { uploadPDFfile, uploadTestSeries } from "@/lib/function"
+import { toast } from "@/components/ui/use-toast"
+
+interface Option {
+  name: string;
+  image?: string;
+}
 
 interface Question {
-  id: string
-  question: string
-  options: string[]
-  correctAnswer: number
-  explanation?: string
-  marks: number
+  id: string;
+  question: string;
+  options: Option[];
+  correctAns: string;
+  explanation?: string;
+  marks: number;
+}
+
+interface TestSeriesFormData {
+  title: string;
+  description: string;
+  terms: string[];
+  duration: string;
+  paid: boolean;
+  price: number;
+  startDate: string;
+  endDate: string;
+  questions: Question[];
+  status: string;
+  totalMarks?: string;
 }
 
 const mockCourses = [
@@ -31,124 +52,149 @@ const mockCourses = [
 
 export default function NewTestSeriesPage() {
   const router = useRouter()
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<TestSeriesFormData>({
     title: "",
     description: "",
-    courseId: "",
-    duration: "",
-    totalMarks: "",
+    terms: [""],
+    duration: "60",
+    paid: false,
+    price: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    questions: [],
     status: "draft",
   })
 
   const [questions, setQuestions] = useState<Question[]>([])
+  const [totalMarks, setTotalMarks] = useState(0)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isParsingPDF, setIsParsingPDF] = useState(false)
-  const [showQuestionForm, setShowQuestionForm] = useState(false)
-  const [currentQuestion, setCurrentQuestion] = useState({
-    question: "",
-    options: ["", "", "", ""],
-    correctAnswer: 0,
-    explanation: "",
-    marks: "1",
-  })
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Creating test series:", { formData, questions })
-    router.push("/admin/test-series")
+    try {
+      const formDataToSend = new FormData()
+      
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key === 'questions') {
+          const formattedQuestions = questions.map(q => ({
+            question: q.question,
+            options: q.options.map(opt => opt.name),
+            correctAns: q.correctAns,
+            marks: Number(q.marks) || 1,
+            explanation: q.explanation || ''
+          }))
+          formDataToSend.append('questions', JSON.stringify(formattedQuestions))
+        } else if (key === 'terms') {
+          formDataToSend.append('terms', JSON.stringify(value))
+        } else if (key === 'price') {
+          formDataToSend.append(key, value.toString())
+        } else if (key === 'paid') {
+          formDataToSend.append(key, value ? 'true' : 'false')
+        } else if (value !== null && value !== undefined) {
+          formDataToSend.append(key, value.toString())
+        } else if(value){
+          formDataToSend.append(key, value)
+        }
+      })
+
+      if (uploadedFile) {
+        formDataToSend.append('file', uploadedFile)
+      }
+      formDataToSend.append('totalMarks', totalMarks.toString())
+
+      const result = await uploadTestSeries(formDataToSend)
+      if (result) {
+        toast({
+          title: "Success",
+          description: "Test series created successfully!",
+          variant: "default",
+        })
+        router.push('/admin/test-series')
+      }
+    } catch (error) {
+      console.error('Error creating test series:', error)
+      toast({
+        title: "Error",
+        description: "Failed to create test series. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  const handleInputChange = (field: keyof Omit<TestSeriesFormData, 'terms'>, value: string | boolean | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleTermChange = (index: number, value: string) => {
+    const newTerms = [...formData.terms]
+    newTerms[index] = value
+    setFormData(prev => ({ ...prev, terms: newTerms }))
+  }
+
+  const addTerm = () => {
+    setFormData(prev => ({ ...prev, terms: [...prev.terms, ''] }))
+  }
+
+  const removeTerm = (index: number) => {
+    if (formData.terms.length > 1) {
+      const newTerms = formData.terms.filter((_, i) => i !== index)
+      setFormData(prev => ({ ...prev, terms: newTerms }))
+    }
+  }
+
+  const updateTotalMarks = (questions: Question[]) => {
+    const total = questions.reduce((sum, q) => sum + (q.marks || 0), 0)
+    setTotalMarks(total)
   }
 
   const handlePDFUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file && file.type === "application/pdf") {
-      setUploadedFile(file)
-      setIsParsingPDF(true)
+      setUploadedFile(file);
+      setIsParsingPDF(true);
 
-      // Simulate PDF parsing
-      setTimeout(() => {
-        const parsedQuestions: Question[] = [
-          {
-            id: "q1",
-            question: "What is the correct way to declare a variable in JavaScript?",
-            options: ["var x = 5;", "variable x = 5;", "v x = 5;", "declare x = 5;"],
-            correctAnswer: 0,
-            explanation: "The 'var' keyword is used to declare variables in JavaScript.",
-            marks: 2,
-          },
-          {
-            id: "q2",
-            question: "Which method is used to add an element to the end of an array?",
-            options: ["push()", "pop()", "shift()", "unshift()"],
-            correctAnswer: 0,
-            explanation: "The push() method adds one or more elements to the end of an array.",
-            marks: 2,
-          },
-          {
-            id: "q3",
-            question: "What does DOM stand for?",
-            options: [
-              "Document Object Model",
-              "Data Object Management",
-              "Dynamic Object Method",
-              "Document Oriented Model",
-            ],
-            correctAnswer: 0,
-            explanation: "DOM stands for Document Object Model, which represents the structure of HTML documents.",
+      try {
+        const uploadRes = await uploadPDFfile(file);
+
+        const pdfUrl = uploadRes?.pdfUrl;
+        if (!pdfUrl) throw new Error("No pdfUrl returned from upload");
+
+        const parseRes = await fetch("https://web-production-630c.up.railway.app/parse-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pdfUrl }),
+        });
+        const parseData = await parseRes.json();
+        console.log("Parse result:", parseData);
+
+        if (parseData?.data) {
+          const parsedQuestions: Question[] = parseData.data.map((q: any, idx: number) => ({
+            id: `q${idx + 1}`,
+            question: q.question,
+            options: q.options,
+            correctAns: q.correctAns,
             marks: 1,
-          },
-        ]
-        setQuestions(parsedQuestions)
-        setFormData((prev) => ({
-          ...prev,
-          totalMarks: parsedQuestions.reduce((sum, q) => sum + q.marks, 0).toString(),
-        }))
-        setIsParsingPDF(false)
-      }, 2000)
-    }
-  }
+          }));
 
-  const addManualQuestion = () => {
-    if (currentQuestion.question && currentQuestion.options.every((opt) => opt.trim())) {
-      const newQuestion: Question = {
-        id: `q${questions.length + 1}`,
-        question: currentQuestion.question,
-        options: currentQuestion.options,
-        correctAnswer: currentQuestion.correctAnswer,
-        explanation: currentQuestion.explanation,
-        marks: Number.parseInt(currentQuestion.marks),
+          setQuestions(parsedQuestions);
+          updateTotalMarks(parsedQuestions);
+          setFormData((prev) => ({
+            ...prev,
+            totalMarks: parsedQuestions.reduce((sum, q) => sum + q.marks, 0).toString(),
+          }));
+        } else {
+          console.error("No questions returned from parser");
+        }
+      } catch (error) {
+        console.error("Error in PDF upload/parse:", error);
+      } finally {
+        setIsParsingPDF(false);
       }
-      setQuestions([...questions, newQuestion])
-      setCurrentQuestion({
-        question: "",
-        options: ["", "", "", ""],
-        correctAnswer: 0,
-        explanation: "",
-        marks: "1",
-      })
-      setShowQuestionForm(false)
-
-      // Update total marks
-      const newTotalMarks = [...questions, newQuestion].reduce((sum, q) => sum + q.marks, 0)
-      setFormData((prev) => ({ ...prev, totalMarks: newTotalMarks.toString() }))
     }
-  }
+  };
 
-  const removeQuestion = (questionId: string) => {
-    const updatedQuestions = questions.filter((q) => q.id !== questionId)
-    setQuestions(updatedQuestions)
-    const newTotalMarks = updatedQuestions.reduce((sum, q) => sum + q.marks, 0)
-    setFormData((prev) => ({ ...prev, totalMarks: newTotalMarks.toString() }))
-  }
-
-  const updateQuestionOption = (index: number, value: string) => {
-    const newOptions = [...currentQuestion.options]
-    newOptions[index] = value
-    setCurrentQuestion((prev) => ({ ...prev, options: newOptions }))
-  }
 
   return (
     <div className="space-y-6">
@@ -198,22 +244,43 @@ export default function NewTestSeriesPage() {
                   />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="course">Associated Course (Optional)</Label>
-                    <Select value={formData.courseId} onValueChange={(value) => handleInputChange("courseId", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a course" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mockCourses.map((course) => (
-                          <SelectItem key={course.id} value={course.id}>
-                            {course.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label>Terms & Conditions</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addTerm}
+                      className="h-8"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Term
+                    </Button>
                   </div>
+                  {formData.terms.map((term, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        placeholder={`Term ${index + 1}`}
+                        value={term}
+                        onChange={(e) => handleTermChange(index, e.target.value)}
+                        required
+                      />
+                      {formData.terms.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removeTerm(index)}
+                          className="h-10 w-10"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
 
                   <div className="space-y-2">
                     <Label htmlFor="duration">Duration (minutes)</Label>
@@ -224,6 +291,75 @@ export default function NewTestSeriesPage() {
                       value={formData.duration}
                       onChange={(e) => handleInputChange("duration", e.target.value)}
                       required
+                      min="1"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Pricing</Label>
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="free"
+                          name="pricing"
+                          checked={!formData.paid}
+                          onChange={() => setFormData(prev => ({ ...prev, paid: false, price: 0 }))}
+                          className="h-4 w-4 text-primary"
+                        />
+                        <Label htmlFor="free" className="cursor-pointer">Free</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="paid"
+                          name="pricing"
+                          checked={formData.paid}
+                          onChange={() => setFormData(prev => ({ ...prev, paid: true }))}
+                          className="h-4 w-4 text-primary"
+                        />
+                        <Label htmlFor="paid" className="cursor-pointer">Paid</Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {formData.paid && (
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Price (₹)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        placeholder="Enter price"
+                        value={formData.price}
+                        onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
+                        min="0"
+                        step="0.01"
+                        required={formData.paid}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => handleInputChange("startDate", e.target.value)}
+                      required
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate">End Date</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => handleInputChange("endDate", e.target.value)}
+                      required
+                      min={formData.startDate}
                     />
                   </div>
                 </div>
@@ -250,8 +386,8 @@ export default function NewTestSeriesPage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <div className="mt-4">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground " />
+                    <div className="mt-4 flex items-center flex-col">
                       <input type="file" accept=".pdf" onChange={handlePDFUpload} className="hidden" id="pdf-upload" />
                       <Label htmlFor="pdf-upload">
                         <Button variant="outline" type="button" asChild>
@@ -277,136 +413,40 @@ export default function NewTestSeriesPage() {
                 </div>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Questions ({questions.length})</CardTitle>
-                    <CardDescription>Manage test questions and answers</CardDescription>
-                  </div>
-                  <Button type="button" variant="outline" onClick={() => setShowQuestionForm(!showQuestionForm)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Question
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {showQuestionForm && (
-                  <div className="p-4 border rounded-lg space-y-4">
-                    <div className="space-y-2">
-                      <Label>Question</Label>
-                      <Textarea
-                        placeholder="Enter your question"
-                        value={currentQuestion.question}
-                        onChange={(e) => setCurrentQuestion((prev) => ({ ...prev, question: e.target.value }))}
-                      />
+            {questions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Parsed Questions</CardTitle>
+                  <CardDescription>Review the extracted questions, options, and answers</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {questions.map((q, idx) => (
+                    <div key={q.id} className="p-4 border rounded-lg space-y-2">
+                      <p className="font-medium">
+                        {idx + 1}. {q.question}
+                      </p>
+                      <ul className="space-y-1 ml-4">
+                        {q.options.map((opt, i) => (
+                          <li
+                            key={i}
+                            className={`text-sm ${opt.name === q.correctAns ? "font-semibold text-green-600" : ""
+                              }`}
+                          >
+                            {opt.name}
+                            {opt.name === q.correctAns && " ✅"}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-sm text-muted-foreground">
+                        Correct Answer: <span className="font-semibold">{q.correctAns}</span>
+                      </p>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>Options</Label>
-                      {currentQuestion.options.map((option, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="correctAnswer"
-                            checked={currentQuestion.correctAnswer === index}
-                            onChange={() => setCurrentQuestion((prev) => ({ ...prev, correctAnswer: index }))}
-                          />
-                          <Input
-                            placeholder={`Option ${index + 1}`}
-                            value={option}
-                            onChange={(e) => updateQuestionOption(index, e.target.value)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Explanation (Optional)</Label>
-                        <Textarea
-                          placeholder="Explain the correct answer"
-                          value={currentQuestion.explanation}
-                          onChange={(e) => setCurrentQuestion((prev) => ({ ...prev, explanation: e.target.value }))}
-                          rows={2}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Marks</Label>
-                        <Input
-                          type="number"
-                          placeholder="1"
-                          value={currentQuestion.marks}
-                          onChange={(e) => setCurrentQuestion((prev) => ({ ...prev, marks: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button type="button" onClick={addManualQuestion}>
-                        Add Question
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => setShowQuestionForm(false)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {questions.length > 0 && (
-                  <div className="space-y-3">
-                    {questions.map((question, index) => (
-                      <div key={question.id} className="p-4 border rounded-lg">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline">Q{index + 1}</Badge>
-                              <Badge variant="secondary">{question.marks} marks</Badge>
-                            </div>
-                            <p className="font-medium mb-2">{question.question}</p>
-                            <div className="space-y-1">
-                              {question.options.map((option, optIndex) => (
-                                <div
-                                  key={optIndex}
-                                  className={`text-sm p-2 rounded ${
-                                    optIndex === question.correctAnswer
-                                      ? "bg-green-50 text-green-700 border border-green-200"
-                                      : "bg-muted"
-                                  }`}
-                                >
-                                  {String.fromCharCode(65 + optIndex)}. {option}
-                                </div>
-                              ))}
-                            </div>
-                            {question.explanation && (
-                              <p className="text-sm text-muted-foreground mt-2">
-                                <strong>Explanation:</strong> {question.explanation}
-                              </p>
-                            )}
-                          </div>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeQuestion(question.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {questions.length === 0 && !showQuestionForm && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="mx-auto h-12 w-12 mb-4" />
-                    <p>No questions added yet</p>
-                    <p className="text-sm">Upload a PDF or add questions manually</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
             <Card>
               <CardHeader>

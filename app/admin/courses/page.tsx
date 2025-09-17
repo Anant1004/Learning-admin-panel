@@ -177,7 +177,7 @@ export default function CoursesPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-semibold">
-                    ${course.discountPrice || course.price}
+                    ₹{course.discountPrice || course.price}
                   </span>
                   <Link href={`/admin/courses/${course.id}/chapters`}>
                     <Button variant="outline" size="sm">

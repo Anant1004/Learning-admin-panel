@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -13,14 +13,22 @@ interface LiveClassItem {
   _id: string;
   title: string;
   description?: string;
-  course?: { _id: string; title: string } | string;
-  chapter?: { _id: string; chapter_name: string } | string;
-  lesson?: { _id: string; title: string } | string;
+  courseId?: { _id: string; title?: string } | string;
+  chapterId?: { _id: string; chapter_name?: string } | string;
+  lessonId?: { _id: string; title?: string } | string;
   startDate?: string;
   endDate?: string;
   thumbnail_url?: string;
   meet_link?: string;
 }
+
+// YouTube thumbnail extract function
+const getThumbnail = (url?: string) => {
+  if (!url) return null;
+  const match = url.match(/v=([a-zA-Z0-9_-]+)/);
+  if (match) return `https://img.youtube.com/vi/${match[1]}/0.jpg`;
+  return url; // direct image URL
+};
 
 export default function LiveClasses() {
   const [items, setItems] = useState<LiveClassItem[]>([]);
@@ -29,10 +37,10 @@ export default function LiveClasses() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await apiClient("GET", "/live-classes");
+        const res = await apiClient("GET", "/liveclasses");
         if (res?.ok) {
-          const list = res?.data?.items || res?.items || res?.data || [];
-          setItems(Array.isArray(list) ? list : []);
+          const list: LiveClassItem[] = res.liveclass || [];
+          setItems(list);
         }
       } finally {
         setLoading(false);
@@ -43,19 +51,22 @@ export default function LiveClasses() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2"><Cast className="h-7 w-7" /> Live Classes</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Cast className="h-7 w-7" /> Live Classes
+          </h1>
           <p className="text-muted-foreground">Schedule and manage your live classes</p>
         </div>
         <Link href="/admin/live-classes/new">
           <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Live Class
+            <Plus className="mr-2 h-4 w-4" /> Create Live Class
           </Button>
         </Link>
       </div>
 
+      {/* Loading state */}
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -78,51 +89,79 @@ export default function LiveClasses() {
           ))}
         </div>
       ) : items.length === 0 ? (
+        // Empty state
         <div className="text-center py-12">
           <Cast className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No live classes yet</h3>
           <p className="text-muted-foreground">Create your first live class to get started</p>
           <Link href="/admin/live-classes/new">
             <Button className="mt-4">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Live Class
+              <Plus className="mr-2 h-4 w-4" /> Create Live Class
             </Button>
           </Link>
         </div>
       ) : (
+        // Live classes grid
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {items.map((lc) => {
-            const courseTitle = typeof lc.course === "string" ? lc.course : lc.course?.title;
-            const chapterName = typeof lc.chapter === "string" ? lc.chapter : lc.chapter?.chapter_name;
-            const lessonTitle = typeof lc.lesson === "string" ? lc.lesson : lc.lesson?.title;
+            const courseText =
+              typeof lc.courseId === "string"
+                ? lc.courseId
+                : lc.courseId?.title || "Course";
+
+            const chapterText =
+              typeof lc.chapterId === "string"
+                ? lc.chapterId
+                : lc.chapterId?.chapter_name || "Chapter";
+
+            const lessonText =
+              typeof lc.lessonId === "string"
+                ? lc.lessonId
+                : lc.lessonId?.title || "Lesson";
+
             return (
               <Card key={lc._id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                {/* Thumbnail */}
                 <div className="aspect-video relative overflow-hidden bg-muted">
                   {lc.thumbnail_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={lc.thumbnail_url} alt={lc.title} className="object-cover w-full h-full" />
+                    <img
+                      src={getThumbnail(lc.thumbnail_url) || ""}
+                      alt={lc.title}
+                      className="object-cover w-full h-full"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                       <Cast className="h-10 w-10" />
                     </div>
                   )}
                 </div>
+
+                {/* Header */}
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg line-clamp-2">{lc.title}</CardTitle>
                     {lc.meet_link && (
-                      <a href={lc.meet_link} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Join</a>
+                      <a
+                        href={lc.meet_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-primary underline"
+                      >
+                        Join
+                      </a>
                     )}
                   </div>
                   <CardDescription className="line-clamp-2">{lc.description}</CardDescription>
                 </CardHeader>
+
+                {/* Content */}
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>{courseTitle}</span>
-                    <Badge variant="outline">{chapterName}</Badge>
+                    <span>{courseText}</span>
+                    <Badge variant="outline">{chapterText}</Badge>
                   </div>
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span className="truncate">{lessonTitle}</span>
+                    <span className="truncate">{lessonText}</span>
                     <div className="flex items-center gap-2">
                       <CalendarDays className="h-4 w-4" />
                       <span>{lc.startDate ? new Date(lc.startDate).toLocaleString() : ""}</span>

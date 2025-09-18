@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Upload, Save, Eye, Plus, FileText, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { uploadPDFfile, uploadTestSeries } from "@/lib/function"
+import { uploadPDFfile, uploadTestSeries, fetchCategories, fetchSubcategories } from "@/lib/function"
 import { toast } from "@/components/ui/use-toast"
 
 interface Option {
@@ -36,12 +36,14 @@ interface TestSeriesFormData {
   terms: string[];
   duration: string;
   paid: boolean;
-  price: number;
+  price?: number;
   startDate: string;
   endDate: string;
   questions: Question[];
   status: string;
   totalMarks?: string;
+  category: string;
+  subcategory: string;
 }
 
 const mockCourses = [
@@ -52,23 +54,50 @@ const mockCourses = [
 
 export default function NewTestSeriesPage() {
   const router = useRouter()
+  const [categories, setCategories] = useState<any[]>([])
+  const [subcategories, setSubcategories] = useState<any[]>([])
+  const [loadingCategories, setLoadingCategories] = useState<boolean>(true)
+  const [loadingSubcategories, setLoadingSubcategories] = useState<boolean>(false)
+
   const [formData, setFormData] = useState<TestSeriesFormData>({
     title: "",
     description: "",
     terms: [""],
     duration: "60",
     paid: false,
-    price: 0,
+    price: undefined,
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     questions: [],
     status: "draft",
+    category: "",
+    subcategory: "",
   })
 
   const [questions, setQuestions] = useState<Question[]>([])
   const [totalMarks, setTotalMarks] = useState(0)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isParsingPDF, setIsParsingPDF] = useState(false)
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      setLoadingCategories(true)
+      const res = await fetchCategories()
+      if (res) setCategories(res)
+      setLoadingCategories(false)
+    }
+    loadCategories()
+  }, [])
+
+  const handleCategoryChange = async (value: string) => {
+    handleInputChange("category", value)
+    setFormData(prev => ({ ...prev, subcategory: "" }))
+    setLoadingSubcategories(true)
+    const subs = await fetchSubcategories(value)
+    if (subs) setSubcategories(subs)
+    else setSubcategories([])
+    setLoadingSubcategories(false)
+  }
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -304,7 +333,7 @@ export default function NewTestSeriesPage() {
                           id="free"
                           name="pricing"
                           checked={!formData.paid}
-                          onChange={() => setFormData(prev => ({ ...prev, paid: false, price: 0 }))}
+                          onChange={() => setFormData(prev => ({ ...prev, paid: false, price: undefined }))}
                           className="h-4 w-4 text-primary"
                         />
                         <Label htmlFor="free" className="cursor-pointer">Free</Label>
@@ -330,11 +359,13 @@ export default function NewTestSeriesPage() {
                         id="price"
                         type="number"
                         placeholder="Enter price"
-                        value={formData.price}
-                        onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
-                        min="0"
-                        step="0.01"
+                        value={formData.price ?? ''}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          price: e.target.value === '' ? undefined : Number(e.target.value) 
+                        }))}
                         required={formData.paid}
+                        min="0"
                       />
                     </div>
                   )}
@@ -374,6 +405,79 @@ export default function NewTestSeriesPage() {
                     onChange={(e) => handleInputChange("totalMarks", e.target.value)}
                     required
                   />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select
+                      value={formData.category}
+                      onValueChange={handleCategoryChange}
+                    >
+                      <SelectTrigger disabled={loadingCategories}>
+                        <SelectValue placeholder={loadingCategories ? "Loading categories..." : "Select Category"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {loadingCategories && (
+                          <SelectItem disabled value="loading">Loading...</SelectItem>
+                        )}
+                        {!loadingCategories && categories.length === 0 && (
+                          <SelectItem disabled value="empty">No categories found</SelectItem>
+                        )}
+                        {!loadingCategories && categories.length > 0 &&
+                          categories.map((cat: any) => {
+                            const id = cat?._id || cat?.id || String(cat?.value || "")
+                            const name = cat?.name || cat?.label || "Unnamed"
+                            return (
+                              <SelectItem key={id} value={id}>
+                                {name}
+                              </SelectItem>
+                            )
+                          })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Subcategory</Label>
+                    <Select
+                      value={formData.subcategory}
+                      onValueChange={(value) => handleInputChange("subcategory", value)}
+                      disabled={!formData.category || loadingSubcategories || loadingCategories}
+                    >
+                      <SelectTrigger>
+                        <SelectValue 
+                          placeholder={
+                            !formData.category 
+                              ? "Select a category first" 
+                              : loadingSubcategories 
+                                ? "Loading subcategories..." 
+                                : "Select Subcategory"
+                          } 
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {!formData.category && (
+                          <SelectItem disabled value="no-cat">Select a category first</SelectItem>
+                        )}
+                        {formData.category && loadingSubcategories && (
+                          <SelectItem disabled value="loading">Loading...</SelectItem>
+                        )}
+                        {formData.category && !loadingSubcategories && subcategories.length === 0 && (
+                          <SelectItem disabled value="empty">No subcategories found</SelectItem>
+                        )}
+                        {formData.category && !loadingSubcategories && subcategories.length > 0 &&
+                          subcategories.map((s: any) => {
+                            const id = s?._id || s?.id || String(s?.value || "")
+                            const name = s?.name || s?.label || "Unnamed"
+                            return (
+                              <SelectItem key={id} value={id}>
+                                {name}
+                              </SelectItem>
+                            )
+                          })}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardContent>
             </Card>

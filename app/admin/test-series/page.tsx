@@ -2,22 +2,21 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { FileText, Plus, Search, Eye, Edit, Trash2, Clock, ListChecks } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect, useMemo } from "react"
-import { getTestSeries } from "@/lib/function"
+import { getTestSeries,deleteTestSeries } from "@/lib/function"
 import { TestSeries } from "@/types"
 
 export default function TestSeriesPage() {
   const [testSeries, setTestSeries] = useState<TestSeries[]>([]);
 
+  const fetchTestSeries = async () => {
+    const res = await getTestSeries();
+    if (res) setTestSeries(res);
+  };
+
   useEffect(() => {
-    const fetchTestSeries = async () => {
-      const res = await getTestSeries();
-      console.log("testSeries", res);
-      if (res) setTestSeries(res);
-    };
     fetchTestSeries();
   }, []);
 
@@ -32,6 +31,11 @@ export default function TestSeriesPage() {
       : 0;
     return { total, published, totalQuestions, avgDuration };
   }, [testSeries]);
+
+  const handleDelete = async (id: string) => {
+    const res = await deleteTestSeries(id);
+    fetchTestSeries();
+  } 
 
   return (
     <div className="space-y-6">
@@ -132,7 +136,7 @@ export default function TestSeriesPage() {
                       <Edit className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Button variant="ghost" size="sm">
+                  <Button onClick={() => handleDelete(test._id)} variant="ghost" size="sm">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

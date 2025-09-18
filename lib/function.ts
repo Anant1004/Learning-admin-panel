@@ -1,5 +1,6 @@
 import toast from "react-hot-toast";
 import { apiClient } from "./api";
+import type { BannerGroup, TestSeries } from "@/types";
 
 export const fetchCategories = async () => {
     try {
@@ -329,4 +330,42 @@ export const fetchBanners = async () => {
 
 export const deleteBanner = async (type: "website" | "app1" | "app2", bannerId: string) => {
   return apiClient("DELETE", `/banners/${type}/${bannerId}`);
+};
+
+export const getTestSeries = async (): Promise<TestSeries[] | null> => {
+  try {
+    const res = await apiClient("GET", "/testSeries");
+    if (!res?.ok) return null;
+
+    const possible = (res?.data?.testSeries ?? res?.data ?? res?.testSeries ?? res) as unknown;
+    if (Array.isArray(possible)) {
+      return possible as TestSeries[];
+    }
+    if (possible && typeof possible === "object") {
+      const arr = Object.values(possible as Record<string, unknown>).filter(
+        (item: any) => item && typeof item === "object" && (item._id || item.id)
+      ) as TestSeries[];
+      return arr;
+    }
+    return null;
+  } catch (err) {
+    console.error("Error fetching test series:", err);
+    return null;
+  }
+};
+
+export const getTestSeriesById = async (id: string): Promise<TestSeries | null> => {
+  try {
+    const res = await apiClient("GET", `/testSeries/${id}`);
+    if (!res?.ok) return null;
+
+    const possible = (res?.data?.testSeries ?? res?.data ?? res?.testSeries ?? res) as unknown;
+    if (typeof possible === "object") {
+      return possible as TestSeries;
+    }
+    return null;
+  } catch (err) {
+    console.error("Error fetching test series:", err);
+    return null;
+  }
 };

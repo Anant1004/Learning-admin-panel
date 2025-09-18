@@ -1,15 +1,40 @@
+"use client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Plus, Search, Filter, Upload, Eye, Edit, Trash2 } from "lucide-react"
+import { FileText, Plus, Search, Eye, Edit, Trash2, Clock, ListChecks } from "lucide-react"
 import Link from "next/link"
-import { mockTestSeries } from "@/lib/mock-data"
+import { useState, useEffect, useMemo } from "react"
+import { getTestSeries } from "@/lib/function"
+import { TestSeries } from "@/types"
 
 export default function TestSeriesPage() {
+  const [testSeries, setTestSeries] = useState<TestSeries[]>([]);
+
+  useEffect(() => {
+    const fetchTestSeries = async () => {
+      const res = await getTestSeries();
+      console.log("testSeries", res);
+      if (res) setTestSeries(res);
+    };
+    fetchTestSeries();
+  }, []);
+
+  const stats = useMemo(() => {
+    const total = testSeries.length;
+    const published = testSeries.filter(ts => ts.status === "published").length;
+    const totalQuestions = testSeries.reduce((acc, ts) => acc + (ts.questions?.length ?? 0), 0);
+    const avgDuration = total > 0
+      ? Math.round(
+          testSeries.reduce((acc, ts) => acc + (ts.duration ?? 0), 0) / total
+        )
+      : 0;
+    return { total, published, totalQuestions, avgDuration };
+  }, [testSeries]);
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-balance">Test Series</h1>
@@ -23,7 +48,6 @@ export default function TestSeriesPage() {
         </Link>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -31,7 +55,7 @@ export default function TestSeriesPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">18</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">+3 from last month</p>
           </CardContent>
         </Card>
@@ -41,76 +65,69 @@ export default function TestSeriesPage() {
             <Eye className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">67% of total</p>
+            <div className="text-2xl font-bold">{stats.published}</div>
+            <p className="text-xs text-muted-foreground">{stats.total > 0 ? Math.round((stats.published / stats.total) * 100) : 0}% of total</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Attempts</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Questions</CardTitle>
+            <ListChecks className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,245</div>
-            <p className="text-xs text-muted-foreground">+15% from last month</p>
+            <div className="text-2xl font-bold">{stats.totalQuestions}</div>
+            <p className="text-xs text-muted-foreground">Across all tests</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Score</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Avg. Duration</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">78%</div>
-            <p className="text-xs text-muted-foreground">+2% from last month</p>
+            <div className="text-2xl font-bold">{stats.avgDuration} min</div>
+            <p className="text-xs text-muted-foreground">Average per test</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters and Search */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search test series..." className="pl-10" />
         </div>
-        <Button variant="outline">
+        {/* <Button variant="outline">
           <Filter className="h-4 w-4 mr-2" />
           Filter
-        </Button>
-        <Button variant="outline">
-          <Upload className="h-4 w-4 mr-2" />
-          Upload PDF
-        </Button>
+        </Button> */}
       </div>
 
-      {/* Test Series List */}
       <div className="grid gap-4">
-        {mockTestSeries.map((test) => (
-          <Card key={test.id}>
+        {testSeries.map((test) => (
+          <Card key={test._id}>
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <CardTitle className="text-lg">{test.title}</CardTitle>
                   <CardDescription>{test.description}</CardDescription>
                 </div>
-                <Badge variant={test.status === "published" ? "default" : "secondary"}>{test.status}</Badge>
+                {/* <Badge variant="secondary">Draft</Badge> */}
               </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                  <span>{test.questions.length} Questions</span>
+                  <span>{test.questions?.length || 0} Questions</span>
                   <span>{test.duration} Minutes</span>
-                  <span>{test.totalMarks} Marks</span>
-                  <span>{test.attempts} Attempts</span>
+                  <span>{test.totalMarks || 0} Marks</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Link href={`/admin/test-series/${test.id}/preview`}>
+                  <Link href={`/admin/test-series/${test._id}`}>
                     <Button variant="ghost" size="sm">
                       <Eye className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Link href={`/admin/test-series/${test.id}/edit`}>
+                  <Link href={`/admin/test-series/${test._id}/edit`}>
                     <Button variant="ghost" size="sm">
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -123,6 +140,7 @@ export default function TestSeriesPage() {
             </CardContent>
           </Card>
         ))}
+
       </div>
     </div>
   )

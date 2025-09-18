@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress"
 import { ArrowLeft, Save } from "lucide-react"
 import { apiClient } from "@/lib/api"
+import toast from "react-hot-toast"
 
 export default function UploadVideoPage() {
   const router = useRouter()
@@ -38,8 +39,7 @@ export default function UploadVideoPage() {
       try {
         const res = await apiClient("POST", "/freevideos", formData)
         if (res.ok) {
-          alert("Video uploaded successfully")
-          console.log("Video uploaded successfully")
+          toast.success("Video uploaded successfully")
           router.push("/admin/free-videos")
         } else {
           console.log("Failed to upload video")
@@ -202,7 +202,7 @@ export default function UploadVideoPage() {
                       <span>Submitting...</span>
                       <span>{uploadProgress}%</span>
                     </div>
-                    <Progress value={uploadProgress} />
+                    {/* <Progress value={uploadProgress} /> */}
                   </div>
                 )}
               </CardContent>

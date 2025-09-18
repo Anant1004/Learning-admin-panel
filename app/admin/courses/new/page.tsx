@@ -20,6 +20,7 @@ export default function NewCoursePage() {
   const [categories, setCategories] = useState<any[]>([])
   const [subCategories, setSubCategories] = useState<any[]>([])
   const [instructors, setInstructors] = useState<any[]>([])
+  const [ispending,setIsPending] = useState(false)
 
   const [tempInputs, setTempInputs] = useState({
     newTopic: "",
@@ -70,11 +71,13 @@ export default function NewCoursePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsPending(true)
     const res = await handleAddCourse(formData)
     if (res?.ok) {
+      setIsPending(false)
       router.push("/admin/courses")
     }
-
+    setIsPending(false)
   }
 
   const handleInputChange = (field: keyof typeof formData, value: any) => {
@@ -806,9 +809,9 @@ export default function NewCoursePage() {
               <Eye className="mr-2 h-4 w-4" />
               Preview
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={ispending}>
               <Save className="mr-2 h-4 w-4" />
-              Create Course
+              {ispending?"Creating...":"Create Course"}
             </Button>
           </div>
         </div>

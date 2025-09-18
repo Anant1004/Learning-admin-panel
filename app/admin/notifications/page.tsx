@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -8,85 +8,99 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { apiClient } from "@/lib/api"
-import toast from "react-hot-toast"
-import { Trash2 } from "lucide-react"
+import { fetchNotifications, uploadNotification } from "@/lib/function"
 
-type NotificationType = 'All Users' | 'Students Only' | 'Instructors Only' | 'Specific User'
+type NotificationType = 'all' | 'students' | 'instructors' | 'specific'
 
 export default function NotificationsPage() {
   const [title, setTitle] = useState("")
   const [message, setMessage] = useState("")
-  const [notificationType, setNotificationType] = useState<NotificationType>('All Users')
+  const [notificationType, setNotificationType] = useState<NotificationType>('all')
   const [specificUser, setSpecificUser] = useState("")
   const [isSending, setIsSending] = useState(false)
+  const { toast } = useToast()
+
   const [notifications, setNotifications] = useState<any[]>([])
-  // const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        setLoading(true)
+        const res = await fetchNotifications()
+        if (res?.success) {
+          setNotifications(res.data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadNotifications()
+  }, [])
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!title.trim() || !message.trim()) {
-      toast.error("Please fill in all required fields")
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      })
       return
     }
 
     setIsSending(true)
 
     try {
-      const res = await apiClient("POST", "/notifications", {
-        title,
-        message,
-        sendTo: notificationType,
-        specificUser: notificationType === 'Specific User' ? specificUser : undefined
-      })
-
-      if (res.success) {
-        toast.success("Notification sent successfully to " + notificationType + " ✅")
-        setTitle("")
-        setMessage("")
-        setNotificationType('All Users')
-        setSpecificUser("")
-        handleFetchNotifications();
-      } else {
-        toast.error("Failed to send notification ❌")
+      const sendToMap: Record<NotificationType, string> = {
+        all: "All Users",
+        students: "Students Only",
+        instructors: "Instructors Only",
+        specific: "Specific User",
       }
 
+      const payload: any = {
+        title,
+        message,
+        sendTo: sendToMap[notificationType],
+      }
+
+      if (notificationType === "specific") {
+        payload.specificUser = specificUser
+      }
+
+      const res = await uploadNotification(payload)
+
+      toast({
+        title: "Success",
+        description:
+          notificationType === "specific"
+            ?` Notification sent to ${specificUser}`
+            : "Notification sent successfully!",
+      })
+
+      setTitle("")
+      setMessage("")
+      setNotificationType("all")
+      setSpecificUser("")
     } catch (error) {
       console.error("Failed to send notification:", error)
-      toast.error("Something went wrong. Please try again.")
+      toast({
+        title: "Error",
+        description: "Failed to send notification. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsSending(false)
     }
   }
 
-  useEffect(() => {
-    handleFetchNotifications();
-  }, []);
-
-  const handleFetchNotifications = async () => {
-    const res = await apiClient("GET", "/notifications", null, false);
-    if (res.success) {
-      setNotifications(res.data);
-    }
-  }
-  const handleDeleteNotification = async (id: string) => {
-    try {
-      const res = await apiClient("DELETE", `/notifications/${id}`);
-      if (res.success) {
-        toast.success("Notification deleted");
-        setNotifications((prev) =>
-          prev.filter((item) => item._id !== id)
-        );
-        handleFetchNotifications();
-      } else {
-        toast.error("Failed to delete");
-      }
-    } catch (err) {
-      toast.error("Something went wrong");
-      console.error(err);
-    }
-  }
   return (
     <div className="space-y-6 w-full">
       <div>
@@ -136,15 +150,15 @@ export default function NotificationsPage() {
                   <SelectValue placeholder="Select recipient type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All Users">All Users</SelectItem>
-                  <SelectItem value="Students Only">Students Only</SelectItem>
-                  <SelectItem value="Instructors Only">Instructors Only</SelectItem>
-                  <SelectItem value="Specific User">Specific User</SelectItem>
+                  <SelectItem value="all">All Users</SelectItem>
+                  <SelectItem value="students">Students Only</SelectItem>
+                  <SelectItem value="instructors">Instructors Only</SelectItem>
+                  <SelectItem value="specific">Specific User</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {notificationType === 'Specific User' && (
+            {notificationType === 'specific' && (
               <div className="space-y-2">
                 <Label htmlFor="specific-user">User Email or ID</Label>
                 <Input
@@ -152,7 +166,7 @@ export default function NotificationsPage() {
                   placeholder="Enter user email or ID"
                   value={specificUser}
                   onChange={(e) => setSpecificUser(e.target.value)}
-                  required={notificationType === 'Specific User'}
+                  required={notificationType === 'specific'}
                 />
               </div>
             )}
@@ -165,47 +179,32 @@ export default function NotificationsPage() {
           </form>
         </CardContent>
       </Card>
+
       <Card className="w-full mt-8">
         <CardHeader>
           <CardTitle>Recent Notifications</CardTitle>
           <CardDescription>View your notification history</CardDescription>
         </CardHeader>
         <CardContent>
-          {notifications.length === 0 ? (
+          {loading ? (
+            <p className="text-center text-muted-foreground">Loading...</p>
+          ) : notifications.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>No recent notifications</p>
             </div>
           ) : (
             <div className="space-y-4">
               {notifications.map((n) => (
-                <div
-                  key={n._id}
-                  className="border rounded-lg p-4 hover:shadow-md transition relative"
-                >
-                  {/* Delete Button */}
-                  <button
-                    onClick={()=>handleDeleteNotification(n._id)}
-                    className="absolute top-12 right-9 p-1 rounded-full hover:bg-red-100 text-red-500 hover:text-red-700 transition"
-                    title="Delete Notification"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold text-lg">{n.title}</h3>
-                      <p className="text-sm text-muted-foreground">{n.message}</p>
-                    </div>
-                    <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">
-                      {n.sendTo}
+                <div key={n._id} className="p-4 border rounded-lg shadow-sm">
+                  <h3 className="font-semibold">{n.title}</h3>
+                  <p className="text-sm text-muted-foreground">{n.message}</p>
+                  <div className="mt-2 text-xs text-gray-500 flex justify-between">
+                    <span>
+                      Send To: {n.sendTo}
+                      {n.specificUser && ` (${n.specificUser})`}
                     </span>
+                    <span>{new Date(n.createdAt)?.toDateString()}</span>
                   </div>
-
-                  {n.specificUser && (
-                    <p className="text-sm mt-2 text-blue-600">
-                      🎯 Sent to: {n.specificUser.name} ({n.specificUser.email})
-                    </p>
-                  )}
                 </div>
               ))}
             </div>
@@ -217,4 +216,3 @@ export default function NotificationsPage() {
     </div>
   )
 }
-

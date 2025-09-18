@@ -98,6 +98,7 @@ export default function NewLessonPage({
 
 
   const handleOpenImageDialog = (url: any) => {
+  
     setOpenDialogUrl(url);
   };
 
@@ -418,6 +419,7 @@ const isValidUrl = (url: any) => {
                             <>
                               <span>{materials[index].file.name.slice(0, 3)}...</span>
                               <button
+                              type="button" 
                                 onClick={() => handleOpenImageDialog(materials[index].url)}
                                 className="ml-2 px-2 py-1 bg-blue-500 text-white rounded text-sm"
                               >
@@ -430,6 +432,7 @@ const isValidUrl = (url: any) => {
                           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                             <div className="bg-white p-4 rounded shadow-lg max-w-3xl max-h-[90vh] overflow-auto">
                               <button
+                              type="button" 
                                 onClick={handleCloseDialog}
                                 className="mb-4 px-2 py-1 bg-red-500 text-white rounded"
                               >

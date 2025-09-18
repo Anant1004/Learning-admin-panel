@@ -142,7 +142,8 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
   const [ispendingaddchapter, setIsPendingAddChapter] = useState<boolean>(false);
   const [iframeUrl, setIframeUrl] = useState("");
   const [openModal, setOpenModal] = useState(false);
-  const [isdialogopenforupdatechapter,setIsDialogOpenForUpdateChapter] = useState(false)
+  const [ispendingaupdatechapter, isPendingaUpdateChapter] = useState(false)
+  const [isdialogopenforupdatechapter, setIsDialogOpenForUpdateChapter] = useState(false)
   const handleAddChapter = async (): Promise<void> => {
     if (!newChapter.title.trim()) return;
     setIsPendingAddChapter(true);
@@ -175,14 +176,21 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
       setIsPendingAddChapter(false);
     }
   };
+  const [isdeletepending, setIsDeletePending] = useState(false)
 
-  const handleDialogOpenForUpdateChapter=(chapterid:string)=>
-  {
-    // alert(chapterid)
-    // setOpenModal(true)
+
+  const handleDialogOpenForUpdateChapter = (chapter: any) => {
+    setIsDialogOpenForUpdateChapter(true);
+    setIsAddingChapter(true);
+    setNewChapter({ title: chapter.chapter_name, description: chapter.chapter_description });
+  };
+
+
+  const handleOpenDialogForNewChapter = () => {
     setIsAddingChapter(true)
+    setNewChapter({ title: "", description: "" })
+    setIsDialogOpenForUpdateChapter(false)
   }
-
 
   const fetchGetChapterByCourseId = async (): Promise<void> => {
     try {
@@ -241,6 +249,22 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
     setIframeUrl(finalUrl);
     setOpenModal(true);
   };
+  const handleDeleteChapter = async (id: string) => {
+    try {
+      setIsDeletePending(true)
+      const resdel = await apiClient("DELETE", `/chapters/${id}`)
+      if (resdel.ok) {
+        toast.success(resdel.message)
+        setIsDeletePending(false)
+        fetchGetChapterByCourseId()
+      }
+    } catch (error: any) {
+      toast.error("Please Refresh The Page & try to delete!")
+
+    } finally {
+      setIsDeletePending(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -255,18 +279,35 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
           <h1 className="text-3xl font-bold text-balance">{coursedetails.title}</h1>
           <p className="text-muted-foreground">{coursedetails.description}</p>
         </div>
-        <Dialog open={isAddingChapter} onOpenChange={setIsAddingChapter}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Chapter
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Chapter</DialogTitle>
-              <DialogDescription>Create a new chapter for this course</DialogDescription>
-            </DialogHeader>
+        <Dialog
+  open={isAddingChapter}
+  onOpenChange={(open) => {
+    if (!open) {
+      setIsAddingChapter(false);
+      setIsDialogOpenForUpdateChapter(false);
+      setNewChapter({ title: "", description: "" });
+    } else {
+      setIsAddingChapter(true);
+    }
+  }}
+>
+  <DialogTrigger asChild>
+    <Button>
+      <Plus className="mr-2 h-4 w-4" />
+      Add Chapter
+    </Button>
+  </DialogTrigger>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>
+        {isdialogopenforupdatechapter ? "Update chapter" : "Add New Chapter"}
+      </DialogTitle>
+      <DialogDescription>
+        {isdialogopenforupdatechapter
+          ? "Update a chapter for this course"
+          : "Create a new chapter for this course"}
+      </DialogDescription>
+    </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="chapter-title">Chapter Title</Label>
@@ -290,14 +331,27 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                 <Button variant="outline" onClick={() => setIsAddingChapter(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddChapter}>
-                  {ispendingaddchapter ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                  )}
-                  {ispendingaddchapter ? "Adding..." : "Add Chapter"}
-                </Button>
+                {isdialogopenforupdatechapter && (
+                  <Button onClick={handleAddChapter}>
+                    {ispendingaupdatechapter ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                    )}
+                    {ispendingaupdatechapter ? "Updating..." : "Update Chapter"}
+                  </Button>)
+                }
+                {!isdialogopenforupdatechapter && (
+                  <Button onClick={handleAddChapter}>
+                    {ispendingaddchapter ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                    )}
+                    {ispendingaddchapter ? "Adding..." : "Add Chapter"}
+                  </Button>
+                )}
+
               </div>
             </div>
           </DialogContent>
@@ -387,7 +441,7 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={()=>handleDialogOpenForUpdateChapter(chapter._id)}>
+                      <DropdownMenuItem onClick={() => handleDialogOpenForUpdateChapter(chapter)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Chapter
                       </DropdownMenuItem>
@@ -397,9 +451,19 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                           Add Lesson
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Chapter
+                      <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteChapter(chapter._id)} disabled={isdeletepending}>
+
+                        {isdeletepending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Deleting…
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Chapter
+                          </>
+                        )}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Users, Clock, BookOpen } from "lucide-react"
-import { FetchCourses } from "@/lib/function"
+import { FetchCourses } from "@/lib/function";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Instructor {
   _id: string
@@ -33,6 +34,8 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [loading, setLoading] = useState(true)
+
 
   const filteredCourses = courses.filter((course) => {
     const matchesSearch =
@@ -58,8 +61,6 @@ export default function CoursesPage() {
   useEffect(() => {
     const fetchCourses = async () => {
       const res = await FetchCourses()
-      console.log("Courses:", res)
-
       if (res) {
         const mapped = Object.values(res)
           .filter((c: any) => c && c._id)
@@ -76,9 +77,11 @@ export default function CoursesPage() {
           }))
         setCourses(mapped)
       }
+      setLoading(false)
     }
     fetchCourses()
   }, [])
+
 
   return (
     <div className="space-y-6">
@@ -119,97 +122,101 @@ export default function CoursesPage() {
         </Select>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredCourses.map((course) => (
-          <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="aspect-video relative overflow-hidden">
-              <img
-                src={course.thumbnail}
-                alt={course.title}
-                className="object-cover w-full h-full"
-              />
-              <Badge className={`absolute top-3 right-3 ${getStatusColor(course.status)}`}>
-                {course.status}
-              </Badge>
-            </div>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link href={`/admin/courses/${course.id}`}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit Course
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href={`/admin/courses/${course.id}/chapters`}>
-                        <BookOpen className="mr-2 h-4 w-4" />
-                        Manage Content
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Course
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <CardDescription className="line-clamp-2">{course.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{course.instructor?.fullname || "Unknown"}</span>
+      {loading ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <Skeleton className="h-40 w-full" />
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-full" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-4 w-1/4" />
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>{course.duration}h</span>
+                  <Skeleton className="h-8 w-1/2" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredCourses.map((course) => (
+            <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="aspect-video relative overflow-hidden">
+                <img
+                  src={course.thumbnail}
+                  alt={course.title}
+                  className="object-cover w-full h-full"
+                />
+                <Badge className={`absolute top-3 right-3 ${getStatusColor(course.status)}`}>
+                  {course.status}
+                </Badge>
+              </div>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {/* <DropdownMenuItem asChild>
+                        <Link href={`/admin/courses/${course.id}`}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit Course
+                        </Link>
+                      </DropdownMenuItem> */}
+                      <DropdownMenuItem asChild>
+                        <Link href={`/admin/courses/${course.id}/chapters`}>
+                          <BookOpen className="mr-2 h-4 w-4" />
+                          Manage Content
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Course
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <CardDescription className="line-clamp-2">{course.description}</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      <span>{course.instructor?.fullname || "Unknown"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span>{course.duration}h</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold">
+                      ₹{course.discountPrice || course.price}
+                    </span>
+                    <Link href={`/admin/courses/${course.id}/chapters`}>
+                      <Button variant="outline" size="sm">
+                        View Details
+                      </Button>
+                    </Link>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold">
-                    ₹{course.discountPrice || course.price}
-                  </span>
-                  <Link href={`/admin/courses/${course.id}/chapters`}>
-                    <Button variant="outline" size="sm">
-                      View Details
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredCourses.length === 0 && (
-        <div className="text-center py-12">
-          <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-semibold">No courses found</h3>
-          <p className="text-muted-foreground">
-            {searchTerm || statusFilter !== "all"
-              ? "Try adjusting your search or filter criteria"
-              : "Get started by creating your first course"}
-          </p>
-          {!searchTerm && statusFilter === "all" && (
-            <Link href="/admin/courses/new">
-              <Button className="mt-4">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Course
-              </Button>
-            </Link>
-          )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
+
     </div>
   )
 }

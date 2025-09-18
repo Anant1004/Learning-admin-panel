@@ -36,6 +36,7 @@ import {
 import { handleAddChaptera } from "@/lib/function"
 import { toast } from "react-hot-toast";
 import { apiClient } from "@/lib/api"
+import { Skeleton } from "@/components/ui/skeleton"
 // Mock data
 const mockCourse = {
   id: "1",
@@ -142,8 +143,12 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
   const [ispendingaddchapter, setIsPendingAddChapter] = useState<boolean>(false);
   const [iframeUrl, setIframeUrl] = useState("");
   const [openModal, setOpenModal] = useState(false);
-  const [ispendingaupdatechapter, isPendingaUpdateChapter] = useState(false)
+  const [ispendingaupdatechapter, setIsPendingaUpdateChapter] = useState(false)
   const [isdialogopenforupdatechapter, setIsDialogOpenForUpdateChapter] = useState(false)
+  const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true)
+  // const [notFound, setNotFound] = useState(false)
+
   const handleAddChapter = async (): Promise<void> => {
     if (!newChapter.title.trim()) return;
     setIsPendingAddChapter(true);
@@ -182,6 +187,7 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
   const handleDialogOpenForUpdateChapter = (chapter: any) => {
     setIsDialogOpenForUpdateChapter(true);
     setIsAddingChapter(true);
+    setEditingChapterId(chapter._id);
     setNewChapter({ title: chapter.chapter_name, description: chapter.chapter_description });
   };
 
@@ -193,24 +199,48 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
   }
 
   const fetchGetChapterByCourseId = async (): Promise<void> => {
+    setLoading(true)
     try {
-      const res = await apiClient("GET", `/chapters/${params.id}/bycourseid`);
-      if (res.ok) {
-        setCourseDetails({ title: res.title, subtitle: res.subtitle, description: res.description, totalLessons: res.totalLessons, totalMaterials: res.totalMaterials })
-        setChapters(res.chapters as Chapter[]);
-        console.log("Fetched chapters:", res.chapters);
+      const res = await apiClient("GET", `/chapters/${params.id}/bycourseid`)
+      if (res.ok && res.chapters?.length) {
+        setCourseDetails({
+          title: res.title,
+          subtitle: res.subtitle,
+          description: res.description,
+          totalLessons: res.totalLessons,
+          totalMaterials: res.totalMaterials,
+        })
+        setChapters(res.chapters as Chapter[])
       } else {
-        toast.error(res.message);
+        // setNotFound(true)
       }
     } catch (e) {
-      console.error("Error fetching chapters:", e);
-      toast.error("Something went wrong");
+      console.error("Error fetching chapters:", e)
+      toast.error("Something went wrong")
+      // setNotFound(true)
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
     fetchGetChapterByCourseId()
   }, [params.id])
+
+  if (loading) {
+    return (
+      <div className="space-y-6 p-4">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
+        </div>
+        <div className="space-y-4">
+          {[1, 2].map(i => <Skeleton key={i} className="h-40 w-full rounded-lg" />)}
+        </div>
+      </div>
+    )
+  }
+
 
 
   const getTotalDuration = (lessons: Lesson[]) => {
@@ -266,6 +296,64 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
     }
   }
 
+
+  const handleUpdateChapter = async (): Promise<void> => {
+    if (!newChapter.title.trim()) return;
+    if (!editingChapterId) return;
+    setIsPendingaUpdateChapter(true);
+    try {
+      const res = await apiClient(
+        "PUT",
+        `/chapters/${editingChapterId}`,
+        {
+          chapter_name: newChapter.title,
+          chapter_description: newChapter.description,
+        }
+      );
+
+      if (res.ok) {
+        toast.success(res.message || "Chapter updated successfully");
+        await fetchGetChapterByCourseId();
+        setIsAddingChapter(false);
+        setIsDialogOpenForUpdateChapter(false);
+        setNewChapter({ title: "", description: "" });
+        setEditingChapterId(null);
+      } else {
+        toast.error(res.message || "Failed to update chapter");
+      }
+    } catch (err) {
+      console.error("Error updating chapter:", err);
+      toast.error("Something went wrong");
+    } finally {
+      setIsPendingaUpdateChapter(false);
+    }
+  };
+
+  const handleDeleteLesson = async (chapterId: string, lessonId: string) => {
+    if (!window.confirm("Are you sure you want to delete this lesson?")) return;
+    try {
+      const res = await apiClient("DELETE", `/lesson/${lessonId}`);
+
+      if (res.ok) {
+        toast.success(res.message || "Lesson deleted successfully");
+
+        setChapters((prev) =>
+          prev.map((ch: any) =>
+            ch._id === chapterId
+              ? { ...ch, lessons: ch.lessons.filter((l: any) => l.id === lessonId || l._id === lessonId ? false : true) }
+              : ch
+          )
+        );
+      } else {
+        toast.error(res.message || "Failed to delete lesson");
+      }
+    } catch (error: any) {
+      console.error("Error deleting lesson:", error);
+      toast.error("Something went wrong while deleting lesson");
+    }
+  };
+
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -280,34 +368,34 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
           <p className="text-muted-foreground">{coursedetails.description}</p>
         </div>
         <Dialog
-  open={isAddingChapter}
-  onOpenChange={(open) => {
-    if (!open) {
-      setIsAddingChapter(false);
-      setIsDialogOpenForUpdateChapter(false);
-      setNewChapter({ title: "", description: "" });
-    } else {
-      setIsAddingChapter(true);
-    }
-  }}
->
-  <DialogTrigger asChild>
-    <Button>
-      <Plus className="mr-2 h-4 w-4" />
-      Add Chapter
-    </Button>
-  </DialogTrigger>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>
-        {isdialogopenforupdatechapter ? "Update chapter" : "Add New Chapter"}
-      </DialogTitle>
-      <DialogDescription>
-        {isdialogopenforupdatechapter
-          ? "Update a chapter for this course"
-          : "Create a new chapter for this course"}
-      </DialogDescription>
-    </DialogHeader>
+          open={isAddingChapter}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsAddingChapter(false);
+              setIsDialogOpenForUpdateChapter(false);
+              setNewChapter({ title: "", description: "" });
+            } else {
+              setIsAddingChapter(true);
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Chapter
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {isdialogopenforupdatechapter ? "Update chapter" : "Add New Chapter"}
+              </DialogTitle>
+              <DialogDescription>
+                {isdialogopenforupdatechapter
+                  ? "Update a chapter for this course"
+                  : "Create a new chapter for this course"}
+              </DialogDescription>
+            </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="chapter-title">Chapter Title</Label>
@@ -332,7 +420,7 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                   Cancel
                 </Button>
                 {isdialogopenforupdatechapter && (
-                  <Button onClick={handleAddChapter}>
+                  <Button onClick={() => handleUpdateChapter()}>
                     {ispendingaupdatechapter ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
@@ -530,15 +618,15 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
+                                {/* <DropdownMenuItem asChild>
                                   <Link
                                     href={`/admin/courses/${params.id}/chapters/${chapter._id}/lessons/${lesson._id}`}
                                   >
                                     <Edit className="mr-2 h-4 w-4" />
                                     Edit Lesson
                                   </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
+                                </DropdownMenuItem> */}
+                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteLesson(chapter._id, lesson._id)}>
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Delete Lesson
                                 </DropdownMenuItem>

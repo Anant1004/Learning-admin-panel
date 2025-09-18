@@ -1,5 +1,6 @@
 import toast from "react-hot-toast";
 import { apiClient } from "./api";
+import type {  TestSeries } from "@/types";
 import { useRouter } from "next/navigation"
 
 export const fetchCategories = async () => {
@@ -331,6 +332,91 @@ export const fetchNotifications = async () => {
     }
   } catch (err) {
     console.error("Error fetching notifications:", err);
+    return null;
+  }
+};
+
+export const saveBanner = async ({
+  type,
+  file,
+  url,
+}: {
+  type: "website" | "app1" | "app2"
+  file: File
+  url?: string
+}) => {
+  try {
+    const formData = new FormData()
+    formData.append("type", type)
+    formData.append("image", file)
+    if (url) formData.append("url", url)
+
+    const res = await apiClient("POST", "/banners/save", formData, true)
+    if (res.ok) {
+      return res
+    } else {
+      console.error("Failed to save banner")
+      return null
+    }
+  } catch (err) {
+    console.error("Error saving banner:", err)
+    return null
+  }
+}
+
+export const fetchBanners = async () => {
+  try {
+    const res = await apiClient("GET", "/banners")
+    if (res.ok) {
+      return res
+    } else {
+      console.error("Failed to fetch banners")
+      return null
+    }
+  } catch (err) {
+    console.error("Error fetching banners:", err)
+    return null
+  }
+}
+
+export const deleteBanner = async (type: "website" | "app1" | "app2", bannerId: string) => {
+  return apiClient("DELETE", `/banners/${type}/${bannerId}`);
+};
+
+export const getTestSeries = async (): Promise<TestSeries[] | null> => {
+  try {
+    const res = await apiClient("GET", "/testSeries");
+    if (!res?.ok) return null;
+
+    const possible = (res?.data?.testSeries ?? res?.data ?? res?.testSeries ?? res) as unknown;
+    if (Array.isArray(possible)) {
+      return possible as TestSeries[];
+    }
+    if (possible && typeof possible === "object") {
+      const arr = Object.values(possible as Record<string, unknown>).filter(
+        (item: any) => item && typeof item === "object" && (item._id || item.id)
+      ) as TestSeries[];
+      return arr;
+    }
+    return null;
+  } catch (err) {
+    console.error("Error fetching test series:", err);
+    return null;
+  }
+};
+
+export const getTestSeriesById = async (id: string): Promise<TestSeries | null> => {
+  try {
+    const res = await apiClient("GET", `/testSeries/${id}`);
+    if (!res?.ok) return null;
+
+    const possible = (res?.data?.testSeries ?? res?.data ?? res?.testSeries ?? res) as unknown;
+    if (typeof possible === "object") {
+      return possible as TestSeries;
+    }
+    return null;
+  } catch (err) {
+    console.error("Error fetching test series:", err);
     return null;
   }
 };

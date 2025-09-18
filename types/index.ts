@@ -58,7 +58,7 @@ export interface Lesson {
   description: string
   order: number
   videoUrl?: string
-  duration: number // in minutes
+  duration: number
   materials: LessonMaterial[]
   createdAt: Date
   updatedAt: Date
@@ -73,17 +73,21 @@ export interface LessonMaterial {
   createdAt: Date
 }
 
+// Normalized backend-style Test Series types
 export interface TestSeries {
-  id: string
+  // Many APIs use Mongo-style `_id`. Keep optional `id` for compatibility.
+  _id: string
+  id?: string
   title: string
-  description: string
+  description?: string
   courseId?: string
-  questions: Question[]
-  duration: number // in minutes
-  totalMarks: number
-  status: "draft" | "published"
-  createdAt: Date
-  updatedAt: Date
+  questions?: TestSeriesQuestion[]
+  duration?: number
+  totalMarks?: number
+  marksPerQuestion?: number
+  status?: "draft" | "published"
+  createdAt?: string | Date
+  updatedAt?: string | Date
 }
 
 export interface Question {
@@ -95,6 +99,17 @@ export interface Question {
   explanation?: string
   marks: number
   order: number
+}
+
+export interface TestSeriesQuestionOption {
+  name: string
+}
+
+export interface TestSeriesQuestion {
+  _id: string
+  question: string
+  options: TestSeriesQuestionOption[]
+  correctAns: string
 }
 
 export interface FreeVideo {
@@ -124,4 +139,21 @@ export interface EnhancedUser {
   coursesCount?: number;
   studentsCount?: number;
   rating?: number;
+}
+
+export interface BannerItem {
+  _id?: string
+  image: string
+  url?: string
+}
+
+export interface BannerGroup {
+  type: "website" | "app1" | "app2"
+  banners: BannerItem[]
+}
+
+export interface ApiOk<T = unknown> {
+  ok: true
+  message?: string
+  data?: T
 }

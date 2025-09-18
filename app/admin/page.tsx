@@ -1,85 +1,47 @@
 "use client";
+
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";   // ✅ यह जोड़ें
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BookOpen, Users, FileText, PlayCircle, TrendingUp, Clock } from "lucide-react"
 import { FetchCourses } from "@/lib/function";
 
 const recentActivity = [
-  {
-    action: "New course created",
-    details: "Advanced React Patterns",
-    time: "2 hours ago",
-    user: "John Instructor",
-  },
-  {
-    action: "Student enrolled",
-    details: "JavaScript Fundamentals",
-    time: "4 hours ago",
-    user: "Sarah Student",
-  },
-  {
-    action: "Test series published",
-    details: "Node.js Assessment",
-    time: "6 hours ago",
-    user: "Mike Instructor",
-  },
-  {
-    action: "Free video uploaded",
-    details: "CSS Grid Tutorial",
-    time: "1 day ago",
-    user: "Admin User",
-  },
-]
+  { action: "New course created", details: "Advanced React Patterns", time: "2 hours ago", user: "John Instructor" },
+  { action: "Student enrolled", details: "JavaScript Fundamentals", time: "4 hours ago", user: "Sarah Student" },
+  { action: "Test series published", details: "Node.js Assessment", time: "6 hours ago", user: "Mike Instructor" },
+  { action: "Free video uploaded", details: "CSS Grid Tutorial", time: "1 day ago", user: "Admin User" },
+];
 
 export default function AdminDashboard() {
   const [courses, setCourses] = useState<any[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchCourses = async () => {
-      const res = await FetchCourses()
+      const res = await FetchCourses();
       if (res) {
-        const courseList = Array.isArray(res) 
-          ? res 
+        const courseList = Array.isArray(res)
+          ? res
           : Object.keys(res).filter((k) => !isNaN(Number(k))).map((k) => res[k]);
-
-        setCourses(courseList)
+        setCourses(courseList);
       }
-    }
-    fetchCourses()
-  }, [])
+    };
+    fetchCourses();
+  }, []);
 
   const courseCount = courses.length;
 
   const stats = [
-    {
-      title: "Total Courses",
-      value: courseCount.toString(),
-      description: "Updated in real-time",
-      icon: BookOpen,
-      trend: courseCount > 0 ? "+100%" : "0%",
-    },
-    {
-      title: "Active Students",
-      value: "1,234",
-      description: "+180 from last month",
-      icon: Users,
-      trend: "+15%",
-    },
-    {
-      title: "Test Series",
-      value: "18",
-      description: "+3 from last month",
-      icon: FileText,
-      trend: "+20%",
-    },
-    {
-      title: "Free Videos",
-      value: "56",
-      description: "+8 from last month",
-      icon: PlayCircle,
-      trend: "+16%",
-    },
-  ]
+    { title: "Total Courses", value: courseCount.toString(), description: "Updated in real-time", icon: BookOpen, trend: courseCount > 0 ? "+100%" : "0%" },
+    { title: "Active Students", value: "1,234", description: "+180 from last month", icon: Users, trend: "+15%" },
+    { title: "Test Series", value: "18", description: "+3 from last month", icon: FileText, trend: "+20%" },
+    { title: "Free Videos", value: "56", description: "+8 from last month", icon: PlayCircle, trend: "+16%" },
+  ];
+
+  const handleNavigate = (path: string) => {
+    router.push(path);
+  };
 
   return (
     <div className="space-y-6">
@@ -88,9 +50,10 @@ export default function AdminDashboard() {
         <p className="text-muted-foreground">Welcome back! Here's what's happening with your LMS today.</p>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => {
-          const Icon = stat.icon
+          const Icon = stat.icon;
           return (
             <Card key={stat.title}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -106,7 +69,7 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
-          )
+          );
         })}
       </div>
 
@@ -144,24 +107,40 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3">
-              <button className="flex items-center gap-3 p-3 text-left rounded-lg border hover:bg-accent transition-colors">
+              <button
+                className="cursor-pointer flex items-center gap-3 p-3 text-left rounded-lg border hover:bg-accent transition-colors"
+                onClick={() => handleNavigate("/admin/courses/new")}
+              >
                 <BookOpen className="h-4 w-4 text-primary" />
                 <div>
                   <p className="font-medium">Create New Course</p>
                   <p className="text-sm text-muted-foreground">Start building a new course</p>
                 </div>
               </button>
-              <button className="flex items-center gap-3 p-3 text-left rounded-lg border hover:bg-accent transition-colors">
+              <button className="cursor-pointer flex items-center gap-3 p-3 text-left rounded-lg border hover:bg-accent transition-colors"
+                onClick={() => handleNavigate("/admin/test-series/new")}
+              >
                 <FileText className="h-4 w-4 text-primary" />
                 <div>
                   <p className="font-medium">Add Test Series</p>
                   <p className="text-sm text-muted-foreground">Create a new assessment</p>
                 </div>
               </button>
-              <button className="flex items-center gap-3 p-3 text-left rounded-lg border hover:bg-accent transition-colors">
+              <button className="cursor-pointer flex items-center gap-3 p-3 text-left rounded-lg border hover:bg-accent transition-colors"
+                onClick={() => handleNavigate("/admin/free-videos/upload")}
+              >
                 <PlayCircle className="h-4 w-4 text-primary" />
                 <div>
                   <p className="font-medium">Upload Free Video</p>
+                  <p className="text-sm text-muted-foreground">Add educational content</p>
+                </div>
+              </button>
+              <button className="cursor-pointer flex items-center gap-3 p-3 text-left rounded-lg border hover:bg-accent transition-colors"
+                onClick={() => handleNavigate("/admin/live-class/")}
+              >
+                <PlayCircle className="h-4 w-4 text-primary" />
+                <div>
+                  <p className="font-medium">Live Class</p>
                   <p className="text-sm text-muted-foreground">Add educational content</p>
                 </div>
               </button>
@@ -170,5 +149,5 @@ export default function AdminDashboard() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

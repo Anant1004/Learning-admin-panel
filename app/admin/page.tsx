@@ -1,36 +1,8 @@
+"use client";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BookOpen, Users, FileText, PlayCircle, TrendingUp, Clock } from "lucide-react"
-
-const stats = [
-  {
-    title: "Total Courses",
-    value: "24",
-    description: "+2 from last month",
-    icon: BookOpen,
-    trend: "+12%",
-  },
-  {
-    title: "Active Students",
-    value: "1,234",
-    description: "+180 from last month",
-    icon: Users,
-    trend: "+15%",
-  },
-  {
-    title: "Test Series",
-    value: "18",
-    description: "+3 from last month",
-    icon: FileText,
-    trend: "+20%",
-  },
-  {
-    title: "Free Videos",
-    value: "56",
-    description: "+8 from last month",
-    icon: PlayCircle,
-    trend: "+16%",
-  },
-]
+import { FetchCourses } from "@/lib/function";
 
 const recentActivity = [
   {
@@ -60,15 +32,62 @@ const recentActivity = [
 ]
 
 export default function AdminDashboard() {
+  const [courses, setCourses] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const res = await FetchCourses()
+      if (res) {
+        const courseList = Array.isArray(res) 
+          ? res 
+          : Object.keys(res).filter((k) => !isNaN(Number(k))).map((k) => res[k]);
+
+        setCourses(courseList)
+      }
+    }
+    fetchCourses()
+  }, [])
+
+  const courseCount = courses.length;
+
+  const stats = [
+    {
+      title: "Total Courses",
+      value: courseCount.toString(),
+      description: "Updated in real-time",
+      icon: BookOpen,
+      trend: courseCount > 0 ? "+100%" : "0%",
+    },
+    {
+      title: "Active Students",
+      value: "1,234",
+      description: "+180 from last month",
+      icon: Users,
+      trend: "+15%",
+    },
+    {
+      title: "Test Series",
+      value: "18",
+      description: "+3 from last month",
+      icon: FileText,
+      trend: "+20%",
+    },
+    {
+      title: "Free Videos",
+      value: "56",
+      description: "+8 from last month",
+      icon: PlayCircle,
+      trend: "+16%",
+    },
+  ]
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold text-balance">Dashboard</h1>
         <p className="text-muted-foreground">Welcome back! Here's what's happening with your LMS today.</p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon
@@ -91,7 +110,6 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      {/* Recent Activity */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>

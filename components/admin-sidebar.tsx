@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { BookOpen, Users, FileText, Settings, Menu, X, Home, GraduationCap, PlayCircle, AlignHorizontalDistributeCenter, Bell, Image as ImageIcon } from "lucide-react"
+import { BookOpen, Users, FileText, Settings, Menu, X, Home, GraduationCap, PlayCircle, Cast, AlignHorizontalDistributeCenter, Bell, Image as ImageIcon } from "lucide-react"
 
 interface SidebarProps {
   className?: string
@@ -42,6 +42,11 @@ const navigation = [
     name: "Free Videos",
     href: "/admin/free-videos",
     icon: PlayCircle,
+  },
+  {
+    name: "Live Classes",
+    href: "/admin/live-classes",
+    icon: Cast,
   },
   {
     name: "Users",

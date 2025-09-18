@@ -420,3 +420,11 @@ export const getTestSeriesById = async (id: string): Promise<TestSeries | null> 
     return null;
   }
 };
+export const deleteTestSeries = async (id: string) => {
+  const res = await apiClient("DELETE", `/testSeries/${id}`);
+  if (res.ok) {
+    return res;
+  } else {
+    return null;
+  }
+};

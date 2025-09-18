@@ -11,6 +11,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Users, Clock, BookOpen } from "lucide-react"
 import { FetchCourses } from "@/lib/function";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiClient } from "@/lib/api"
+import toast from "react-hot-toast"
 
 interface Instructor {
   _id: string
@@ -58,8 +60,7 @@ export default function CoursesPage() {
     }
   }
 
-  useEffect(() => {
-    const fetchCourses = async () => {
+  const fetchCourses = async () => {
       const res = await FetchCourses()
       if (res) {
         const mapped = Object.values(res)
@@ -79,8 +80,25 @@ export default function CoursesPage() {
       }
       setLoading(false)
     }
+
+  useEffect(() => {
+    
     fetchCourses()
   }, [])
+
+  const handleDeleteCourse=async(course:any)=>{
+    try {
+      const res = await apiClient("DELETE",`/course/${course.id}`)
+      if(res.ok)
+      {
+        toast.success(res.message)
+        fetchCourses()
+      }
+    } catch (error:any) {
+      toast.error(error)
+    }
+    // alert(id)
+  }
 
 
   return (
@@ -159,7 +177,7 @@ export default function CoursesPage() {
               </div>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
+                  <CardTitle className="text-lg line-clamp-2">{course.title.slice(1,12)}</CardTitle>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -179,7 +197,7 @@ export default function CoursesPage() {
                           Manage Content
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
+                      <DropdownMenuItem className="text-destructive" onClick={()=>handleDeleteCourse(course)}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Course
                       </DropdownMenuItem>

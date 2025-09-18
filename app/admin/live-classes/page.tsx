@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Cast, Clock, Plus } from "lucide-react";
+import { CalendarDays, Cast, Clock, Plus, Trash2 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -34,6 +34,7 @@ export default function LiveClasses() {
   const [items, setItems] = useState<LiveClassItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Load live classes
   useEffect(() => {
     const load = async () => {
       try {
@@ -48,6 +49,24 @@ export default function LiveClasses() {
     };
     load();
   }, []);
+
+  // Delete function
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this live class?")) return;
+
+    try {
+      const res = await apiClient("DELETE", `/liveclasses/${id}`);
+      if (res.ok) {
+        setItems((prev) => prev.filter((item) => item._id !== id));
+        alert("Live class deleted successfully!");
+      } else {
+        alert("Failed to delete live class.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong while deleting.");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -173,6 +192,15 @@ export default function LiveClasses() {
                       <span>Ends: {new Date(lc.endDate).toLocaleString()}</span>
                     </div>
                   )}
+                  {/* Delete button */}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="mt-2 opacity-38 hover:opacity-100 hover:cursor-pointer"
+                    onClick={() => handleDelete(lc._id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4 " /> Delete
+                  </Button>
                 </CardContent>
               </Card>
             );

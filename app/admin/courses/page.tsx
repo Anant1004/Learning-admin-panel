@@ -177,7 +177,7 @@ export default function CoursesPage() {
               </div>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg line-clamp-2">{course.title.slice(1,12)}</CardTitle>
+                  <CardTitle className="text-lg line-clamp-2">{course.title.slice(0,12)}</CardTitle>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">

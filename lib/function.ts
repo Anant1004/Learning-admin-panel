@@ -428,3 +428,8 @@ export const deleteTestSeries = async (id: string) => {
     return null;
   }
 };
+
+export const fetchChaptersByCourseId = async (id: string) => {
+  const res = await apiClient("GET", `/course/${id}/chapters`);
+  return res?.chapters || [];
+};

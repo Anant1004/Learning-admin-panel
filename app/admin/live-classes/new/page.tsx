@@ -74,8 +74,8 @@ export default function NewLiveClassPage() {
         setSelectedLessonId("");
         return;
       }
-      const ch = await fetchChaptersByCourseId(selectedCourseId);
-      setChapters(ch || []);
+      const res = await apiClient("GET",`/chapters/${selectedCourseId}/bycourseid`)
+      setChapters(res.chapters || []);
       setSelectedChapterId("");
       setSelectedLessonId("");
       setLessons([]);
@@ -131,7 +131,7 @@ export default function NewLiveClassPage() {
         meet_link: meetLink,
       };
 
-      const res = await apiClient("POST", "/live-classes", payload);
+      const res = await apiClient("POST", "/liveclasses", payload);
       if (res?.ok) {
         toast.success(res?.message || "Live class created");
         setTitle("");
@@ -148,7 +148,7 @@ export default function NewLiveClassPage() {
         toast.error(res?.error || "Failed to create live class");
       }
     } catch (e: any) {
-      toast.error("Something went wrong");
+      toast.error(e);
     } finally {
       setIsSubmitting(false);
     }
@@ -268,14 +268,14 @@ export default function NewLiveClassPage() {
               <Input id="thumbUrl" placeholder="https://…" value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="thumbFile">Or Upload Thumbnail</Label>
-              <div className="flex items-center gap-3">
+              {/* <Label htmlFor="thumbFile">Or Upload Thumbnail</Label> */}
+              {/* <div className="flex items-center gap-3">
                 <Input id="thumbFile" type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleThumbFile(e.target.files[0])} />
                 <Button type="button" variant="outline" disabled={isUploadingThumb}>
                   {isUploadingThumb ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                   {isUploadingThumb ? "Uploading…" : "Upload"}
                 </Button>
-              </div>
+              </div> */}
               {thumbnailUrl && (
                 <div className="text-sm text-muted-foreground break-all">Uploaded URL: {thumbnailUrl}</div>
               )}

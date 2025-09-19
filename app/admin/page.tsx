@@ -136,7 +136,7 @@ export default function AdminDashboard() {
                 </div>
               </button>
               <button className="cursor-pointer flex items-center gap-3 p-3 text-left rounded-lg border hover:bg-accent transition-colors"
-                onClick={() => handleNavigate("/admin/live-class/")}
+                onClick={() => handleNavigate("/admin/live-classes/new")}
               >
                 <PlayCircle className="h-4 w-4 text-primary" />
                 <div>

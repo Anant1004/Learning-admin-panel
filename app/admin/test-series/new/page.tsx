@@ -118,8 +118,18 @@ export default function NewTestSeriesPage() {
         } else if (key === 'terms') {
           formDataToSend.append('terms', JSON.stringify(value))
         } else if (key === 'price') {
-          formDataToSend.append(key, value.toString())
-        } else if (key === 'paid') {
+          if (formData.paid) {
+            const num = Number(value);
+            if (!isNaN(num)) {
+              formDataToSend.append('price', num.toString());
+            } else {
+              formDataToSend.append('price', '0');
+            }
+          } else {
+            formDataToSend.append('price', '0');
+          }
+        }
+        else if (key === 'paid') {
           formDataToSend.append(key, value ? 'true' : 'false')
         } else if (value !== null && value !== undefined) {
           formDataToSend.append(key, value.toString())
@@ -360,10 +370,14 @@ export default function NewTestSeriesPage() {
                         type="number"
                         placeholder="Enter price"
                         value={formData.price ?? ''}
-                        onChange={(e) => setFormData(prev => ({ 
-                          ...prev, 
-                          price: e.target.value === '' ? undefined : Number(e.target.value) 
-                        }))}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const num = Number(val);
+                          setFormData(prev => ({
+                            ...prev,
+                            price: val === '' ? undefined : !isNaN(num) ? num : prev.price
+                          }));
+                        }}                        
                         required={formData.paid}
                         min="0"
                       />

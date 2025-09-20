@@ -26,7 +26,7 @@ export default function HomePage() {
       const res = await apiClient("POST", "/auth/login", { email, password });
       if (res?.ok) {
         toast.success(res?.message || "Logged in successfully");
-        router.replace("/admin");
+        router.push("/admin");
       } else {
         toast.error(res?.error || "Login failed");
       }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";   // ✅ यह जोड़ें
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BookOpen, Users, FileText, PlayCircle, TrendingUp, Clock } from "lucide-react"
 import { FetchCourses } from "@/lib/function";

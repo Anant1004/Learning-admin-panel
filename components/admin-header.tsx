@@ -12,8 +12,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
+import { useRouter } from "next/navigation"
 export function AdminHeader() {
+    const router = useRouter()
+
+ const handleLogout = () => {
+  localStorage.removeItem("token")
+  router.push("/") 
+}
   return (
     <header className="flex h-16 items-center justify-between border-b bg-background px-6">
       <div className="flex items-center gap-4 flex-1 max-w-md">
@@ -49,7 +55,7 @@ export function AdminHeader() {
               <span>Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={()=>handleLogout()}>
               <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>

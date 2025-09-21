@@ -1,16 +1,17 @@
 import axios from "axios";
 
 function createAxiosClient() {
-  return async function (method:string, endpoint:string, body?:any, isFormData = false) {
+  return async function (method: string, endpoint: string, body?: any, isFormData = false) {
     const url = process.env.NODE_ENV === "production"
-  ? process.env.NEXT_PUBLIC_API_URL + (endpoint ? endpoint : "")
-  : process.env.NEXT_PUBLIC_DEV_API_URL + (endpoint ? endpoint : "");
-
+      ? process.env.NEXT_PUBLIC_API_URL + (endpoint ? endpoint : "")
+      : process.env.NEXT_PUBLIC_DEV_API_URL + (endpoint ? endpoint : "");
+    const token = localStorage.getItem("token");
     const config = {
       method,
       url,
       headers: {
         "Content-Type": isFormData ? "multipart/form-data" : "application/json",
+        "Authorization": `Bearer ${token}`
       },
       withCredentials: true,
       data: body,
@@ -23,7 +24,7 @@ function createAxiosClient() {
         ok: response.status >= 200 && response.status < 300,
         ...response.data,
       };
-    } catch (error:any) {
+    } catch (error: any) {
       if (error.response?.data?.message) {
         throw error.response.data.message;
       }

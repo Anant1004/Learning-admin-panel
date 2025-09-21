@@ -25,6 +25,7 @@ export default function HomePage() {
       setIsSubmitting(true);
       const res = await apiClient("POST", "/auth/login", { email, password });
       if (res?.ok) {
+        localStorage.setItem("token",res.token)
         toast.success(res?.message || "Logged in successfully");
         router.push("/admin");
       } else {

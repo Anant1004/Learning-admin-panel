@@ -28,11 +28,12 @@ export default function NewLessonPage({ params }: { params: { id: string; chapte
   const [isPendingSubmit, setPendingSubmit] = useState(false)
   const [materials, setMaterials] = useState<
     Array<{
-      material_type: "notes" | "pdf" | "assignment"
+      material_type: "notes" | "pdf" | "assignment" | "dpp"
       material_title: string
       file?: File
       url?: string
       public_id?: string
+      material_url?: string
     }>
   >([])
   const [openDialogUrl, setOpenDialogUrl] = useState<any>(null)
@@ -53,7 +54,7 @@ export default function NewLessonPage({ params }: { params: { id: string; chapte
     setVideos((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const addMaterial = (material_type: "notes" | "pdf" | "assignment") => {
+  const addMaterial = (material_type: "notes" | "pdf" | "assignment" | "dpp") => {
     setMaterials((prev) => [...prev, { material_type, material_title: "" }])
   }
 
@@ -81,6 +82,8 @@ export default function NewLessonPage({ params }: { params: { id: string; chapte
         return <BookOpen className="h-4 w-4" />
       case "pdf":
         return <FileText className="h-4 w-4" />
+      case "dpp":
+        return <PenTool className="h-4 w-4" />
       case "assignment":
         return <Paperclip className="h-4 w-4" />
       default:
@@ -132,7 +135,15 @@ export default function NewLessonPage({ params }: { params: { id: string; chapte
       })
       setMaterials((prev) =>
         prev.map((mat, i) =>
-          i === index ? { ...mat, file: file, url: uploadRes.data.secure_url, public_id: uploadRes.data.public_id } : mat
+          i === index
+            ? {
+                ...mat,
+                file: file,
+                url: uploadRes.data.secure_url,
+                material_url: uploadRes.data.secure_url,
+                public_id: uploadRes.data.public_id,
+              }
+            : mat
         )
       )
     } catch (err) {
@@ -158,12 +169,16 @@ export default function NewLessonPage({ params }: { params: { id: string; chapte
     } else if (activeTab === "materials") {
       if (materials.length > 0) {
         try {
+          const materialsPayload = materials.map((m) => ({
+            ...m,
+            material_url: m.url || m.material_url,
+          }))
           const body = {
             title: formData.title,
             description: formData.description,
             duration: formData.duration,
             videos,
-            materials,
+            materials: materialsPayload,
             chapterId: params.chapterId,
             courseId: params.id,
           }
@@ -297,6 +312,10 @@ export default function NewLessonPage({ params }: { params: { id: string; chapte
                   <Button type="button" variant="outline" onClick={() => addMaterial("pdf")} className="justify-start">
                     <FileText className="mr-2 h-4 w-4" />
                     Add PDF
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => addMaterial("dpp")} className="justify-start">
+                    <PenTool className="mr-2 h-4 w-4" />
+                    Add DPP
                   </Button>
                   <Button
                     type="button"

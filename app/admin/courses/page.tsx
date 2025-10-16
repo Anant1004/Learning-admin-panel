@@ -241,6 +241,12 @@ export default function CoursesPage() {
                           Manage Content
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/admin/courses/${course.id}/enrollments`}>
+                          <Users className="mr-2 h-4 w-4" />
+                          Enrollments
+                        </Link>
+                      </DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive" onClick={()=>openConfirm(course)}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Course
@@ -266,11 +272,18 @@ export default function CoursesPage() {
                     <span className="text-lg font-semibold">
                       ₹{course.discountPrice || course.price}
                     </span>
-                    <Link href={`/admin/courses/${course.id}/chapters`}>
-                      <Button variant="outline" size="sm">
-                        View Details
-                      </Button>
-                    </Link>
+                    <div className="flex gap-2">
+                      <Link href={`/admin/courses/${course.id}/chapters`}>
+                        <Button variant="outline" size="sm">
+                          View Details
+                        </Button>
+                      </Link>
+                      <Link href={`/admin/courses/${course.id}/enrollments`}>
+                        <Button variant="outline" size="sm">
+                          Enrollments
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </CardContent>

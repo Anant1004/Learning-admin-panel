@@ -18,6 +18,16 @@ import {
 } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   ArrowLeft,
   Plus,
   MoreHorizontal,
@@ -39,66 +49,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useRouter } from "next/navigation"
 
 
-//   {
-//     id: "ch1",
-//     courseId: "1",
-//     title: "Introduction to React Hooks",
-//     description: "Learn the fundamentals of React hooks and how they work",
-//     order: 1,
-//     lessons: [
-//       {
-//         id: "l1",
-//         chapterId: "ch1",
-//         title: "useState Hook Basics",
-//         description: "Understanding state management with useState",
-//         order: 1,
-//         videoUrl: "https://example.com/video1",
-//         duration: 15,
-//         materials: [],
-//         createdAt: new Date(),
-//         updatedAt: new Date(),
-//       },
-//       {
-//         id: "l2",
-//         chapterId: "ch1",
-//         title: "useEffect Hook Deep Dive",
-//         description: "Side effects and lifecycle management",
-//         order: 2,
-//         videoUrl: "https://example.com/video2",
-//         duration: 20,
-//         materials: [],
-//         createdAt: new Date(),
-//         updatedAt: new Date(),
-//       },
-//     ],
-//     createdAt: new Date(),
-//     updatedAt: new Date(),
-//   },
-//   {
-//     id: "ch2",
-//     courseId: "1",
-//     title: "Advanced Patterns",
-//     description: "Explore advanced React patterns and best practices",
-//     order: 2,
-//     lessons: [
-//       {
-//         id: "l3",
-//         chapterId: "ch2",
-//         title: "Render Props Pattern",
-//         description: "Implementing the render props pattern",
-//         order: 1,
-//         videoUrl: "https://example.com/video3",
-//         duration: 25,
-//         materials: [],
-//         createdAt: new Date(),
-//         updatedAt: new Date(),
-//       },
-//     ],
-//     createdAt: new Date(),
-//     updatedAt: new Date(),
-//   },
-// ]
-// types/course.ts
 interface Lesson {
   id: string;
   chapterId: string;
@@ -181,6 +131,12 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
     }
   };
   const [isdeletepending, setIsDeletePending] = useState(false)
+  const [confirmChapterOpen, setConfirmChapterOpen] = useState(false)
+  const [chapterToDelete, setChapterToDelete] = useState<any>(null)
+  const [isDeletingChapter, setIsDeletingChapter] = useState(false)
+  const [confirmLessonOpen, setConfirmLessonOpen] = useState(false)
+  const [lessonToDelete, setLessonToDelete] = useState<any>(null)
+  const [isDeletingLesson, setIsDeletingLesson] = useState(false)
 
 
   const handleDialogOpenForUpdateChapter = (chapter: any) => {
@@ -295,6 +251,20 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
     }
   }
 
+  const openConfirmChapter = (chapter: any) => {
+    setChapterToDelete(chapter)
+    setConfirmChapterOpen(true)
+  }
+
+  const confirmDeleteChapter = async () => {
+    if (!chapterToDelete?._id) return
+    setIsDeletingChapter(true)
+    await handleDeleteChapter(chapterToDelete._id)
+    setIsDeletingChapter(false)
+    setConfirmChapterOpen(false)
+    setChapterToDelete(null)
+  }
+
 
   const handleUpdateChapter = async (): Promise<void> => {
     if (!newChapter.title.trim()) return;
@@ -329,7 +299,6 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
   };
 
   const handleDeleteLesson = async (chapterId: string, lessonId: string) => {
-    if (!window.confirm("Are you sure you want to delete this lesson?")) return;
     try {
       const res = await apiClient("DELETE", `/lesson/${lessonId}`);
 
@@ -351,6 +320,20 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
       toast.error("Something went wrong while deleting lesson");
     }
   };
+
+  const openConfirmLesson = (chapterId: string, lesson: any) => {
+    setLessonToDelete({ chapterId, lessonId: lesson._id, title: lesson.title })
+    setConfirmLessonOpen(true)
+  }
+
+  const confirmDeleteLesson = async () => {
+    if (!lessonToDelete) return
+    setIsDeletingLesson(true)
+    await handleDeleteLesson(lessonToDelete.chapterId, lessonToDelete.lessonId)
+    setIsDeletingLesson(false)
+    setConfirmLessonOpen(false)
+    setLessonToDelete(null)
+  }
 
   const handleEditLesson = (lesson: any) => {
     console.log(lesson)
@@ -574,19 +557,9 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                           Add Lesson
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteChapter(chapter._id)} disabled={isdeletepending}>
-
-                        {isdeletepending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Deleting…
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Chapter
-                          </>
-                        )}
+                      <DropdownMenuItem className="text-destructive" onClick={() => openConfirmChapter(chapter)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Chapter
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -670,7 +643,7 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit Lesson
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteLesson(chapter._id, lesson._id)}>
+                                <DropdownMenuItem className="text-destructive" onClick={() => openConfirmLesson(chapter._id, lesson)}>
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Delete Lesson
                                 </DropdownMenuItem>
@@ -705,6 +678,29 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                     </DialogContent>
                   </Dialog>
 
+                  <AlertDialog open={confirmLessonOpen} onOpenChange={setConfirmLessonOpen}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete lesson?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {`This will permanently delete "${lessonToDelete?.title || "this lesson"}". This action cannot be undone.`}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeletingLesson}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteLesson} disabled={isDeletingLesson}>
+                          {isDeletingLesson ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
+                            </>
+                          ) : (
+                            "Delete"
+                          )}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
                 </div>
               </CardContent>
             )}
@@ -723,6 +719,29 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
           </Button>
         </div>
       )}
+
+      <AlertDialog open={confirmChapterOpen} onOpenChange={setConfirmChapterOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete chapter?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`This will permanently delete "${chapterToDelete?.chapter_name || "this chapter"}" and its lessons. This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingChapter}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteChapter} disabled={isDeletingChapter}>
+              {isDeletingChapter ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* <Dialog open={isEditingLesson} onOpenChange={setIsEditingLesson}>
         <DialogContent>
           <DialogHeader>

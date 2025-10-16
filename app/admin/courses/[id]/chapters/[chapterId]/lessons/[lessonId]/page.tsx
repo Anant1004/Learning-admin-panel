@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, FileText, BookOpen, Paperclip, Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, Paperclip, Loader2, PlusCircle, Trash2, PenTool } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { apiClient } from "@/lib/api";
 import axios from "axios";
@@ -32,7 +32,7 @@ export default function EditLessonPage({
   const [isPendingSubmit, setPendingSubmit] = useState(false);
   const [materials, setMaterials] = useState<
     Array<{
-      material_type: "notes" | "pdf" | "assignment";
+      material_type: "notes" | "pdf" | "assignment" | "dpp";
       material_title: string;
       file?: File;
       url?: string;
@@ -73,7 +73,11 @@ export default function EditLessonPage({
               },
             ]);
           }
-          setMaterials(lesson.materials || []);
+          setMaterials(
+            Array.isArray(lesson.materials)
+              ? lesson.materials.map((m: any) => ({ ...m, url: m?.url || m?.material_url }))
+              : []
+          );
         } else {
           toast.error(res?.message || "Failed to load lesson");
         }
@@ -102,7 +106,7 @@ export default function EditLessonPage({
     setVideos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const addMaterial = (material_type: "notes" | "pdf" | "assignment") => {
+  const addMaterial = (material_type: "notes" | "pdf" | "assignment" | "dpp") => {
     setMaterials((prev) => [...prev, { material_type, material_title: "" }]);
   };
 
@@ -168,7 +172,15 @@ export default function EditLessonPage({
       });
       setMaterials((prev) =>
         prev.map((mat, i) =>
-          i === index ? { ...mat, file: file, url: uploadRes.data.secure_url, public_id: uploadRes.data.public_id } : mat
+          i === index
+            ? {
+                ...mat,
+                file: file,
+                url: uploadRes.data.secure_url,
+                material_url: uploadRes.data.secure_url,
+                public_id: uploadRes.data.public_id,
+              }
+            : mat
         )
       );
     } catch (err) {
@@ -195,12 +207,16 @@ export default function EditLessonPage({
       if (materials.length > 0) {
         try {
           setPendingSubmit(true);
+          const materialsPayload = materials.map((m) => ({
+            ...m,
+            material_url: m.url || m.material_url,
+          }));
           const body: any = {
             title: formData.title,
             description: formData.description,
             duration: formData.duration,
             videos,
-            materials,
+            materials: materialsPayload,
             chapterId: params.chapterId,
             courseId: params.id,
           };
@@ -347,6 +363,10 @@ export default function EditLessonPage({
                     <FileText className="mr-2 h-4 w-4" />
                     Add PDF
                   </Button>
+                  <Button type="button" variant="outline" onClick={() => addMaterial("dpp")} className="justify-start">
+                    <PenTool className="mr-2 h-4 w-4" />
+                    Add DPP
+                  </Button>
                   <Button type="button" variant="outline" onClick={() => addMaterial("assignment")} className="justify-start">
                     <Paperclip className="mr-2 h-4 w-4" />
                     Add Assignment
@@ -362,6 +382,8 @@ export default function EditLessonPage({
                           <BookOpen className="h-4 w-4" />
                         ) : material.material_type === "pdf" ? (
                           <FileText className="h-4 w-4" />
+                        ) : material.material_type === "dpp" ? (
+                          <PenTool className="h-4 w-4" />
                         ) : (
                           <Paperclip className="h-4 w-4" />
                         )}

@@ -32,19 +32,13 @@ import {
   PlusCircle,
   Video,
 } from "lucide-react"
-// import type { Chapter, Lesson } from "@/types"
 import { handleAddChaptera } from "@/lib/function"
 import { toast } from "react-hot-toast";
 import { apiClient } from "@/lib/api"
 import { Skeleton } from "@/components/ui/skeleton"
-// Mock data
-const mockCourse = {
-  id: "1",
-  title: "Advanced React Patterns",
-  description: "Master advanced React concepts including hooks, context, and performance optimization",
-}
+import { useRouter } from "next/navigation"
 
-// const mockChapters: (Chapter & { lessons: Lesson[] })[] = [
+
 //   {
 //     id: "ch1",
 //     courseId: "1",
@@ -132,6 +126,7 @@ interface Chapter {
 
 
 export default function CourseChaptersPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isAddingChapter, setIsAddingChapter] = useState<boolean>(false);
   const [newChapter, setNewChapter] = useState<{ title: string; description: string }>({
@@ -147,6 +142,10 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
   const [isdialogopenforupdatechapter, setIsDialogOpenForUpdateChapter] = useState(false)
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true)
+  const [isEditingLesson, setIsEditingLesson] = useState(false);
+  const [editingLesson, setEditingLesson] = useState<any>(null);
+  const [isUpdatingLesson, setIsUpdatingLesson] = useState(false);
+
   // const [notFound, setNotFound] = useState(false)
 
   const handleAddChapter = async (): Promise<void> => {
@@ -353,10 +352,48 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
     }
   };
 
+  const handleEditLesson = (lesson: any) => {
+    console.log(lesson)
+    router.push(`/admin/courses/${params.id}/chapters/${lesson.chapter_id}/lessons/${lesson._id}`);
+    setEditingLesson({
+      id: lesson._id,
+      title: lesson.title,
+      description: lesson.description,
+      videoUrl: lesson.video_url || "",
+      duration: lesson.duration,
+    });
+    setIsEditingLesson(true);
+  };
+
+  const handleUpdateLesson = async () => {
+    if (!editingLesson?.title?.trim()) return;
+    setIsUpdatingLesson(true);
+    try {
+      const res = await apiClient("PUT", `/lesson/${editingLesson.id}`, {
+        title: editingLesson.title,
+        description: editingLesson.description,
+        video_url: editingLesson.videoUrl,
+        duration: editingLesson.duration,
+      });
+      if (res.ok) {
+        toast.success("Lesson updated successfully!");
+        setIsEditingLesson(false);
+        setEditingLesson(null);
+        await fetchGetChapterByCourseId();
+      } else {
+        toast.error(res.message || "Failed to update lesson");
+      }
+    } catch (err) {
+      toast.error("Error updating lesson");
+    } finally {
+      setIsUpdatingLesson(false);
+    }
+  };
+
+
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/admin/courses">
           <Button variant="ghost" size="icon">
@@ -446,7 +483,6 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
         </Dialog>
       </div>
 
-      {/* Course Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="p-4">
@@ -498,7 +534,6 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
         </Card>
       </div>
 
-      {/* Chapters List */}
       <div className="space-y-4">
         {chapters.map((chapter: any, index: number) => (
           <Card key={chapter._id} className="overflow-hidden">
@@ -582,30 +617,43 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                             </Badge>
                             <div>
                               <p className="font-medium">{lesson.title}</p>
-                              <p className="text-sm text-muted-foreground">{lesson.description}</p>
+                              <p className="text-sm text-muted-foreground mb-2">{lesson.description}</p>
 
-                              {/* Video & PDF Buttons */}
-                              <div className="flex gap-2 mt-2">
-                                {lesson.video_url && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => openInIframe(lesson.video_url)}
-                                  >
-                                    <Video className="h-4 w-4 mr-1" /> Open Video
-                                  </Button>
-                                )}
-                                {lesson.materials?.map((mat: any, i: number) => (
-                                  <Button
-                                    key={i}
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => openInIframe(mat.material_url)}
-                                  >
-                                    <FileText className="h-4 w-4 mr-1" /> {mat.material_title || "Open PDF"}
-                                  </Button>
-                                ))}
-                              </div>
+                              {lesson.videos?.length > 0 && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                                  {lesson.videos.map((video: any, i: number) => (
+                                    <div
+                                      key={i}
+                                      className="relative w-full aspect-video rounded-lg overflow-hidden cursor-pointer group"
+                                      onClick={() => openInIframe(video.video_url)}
+                                    >
+                                      <img
+                                        src={video.video_thumbnail}
+                                        alt={`Video ${i + 1} Thumbnail`}
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                      />
+                                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <PlayCircle className="text-white w-12 h-12" />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {lesson.materials?.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-4">
+                                  {lesson.materials.map((mat: any, i: number) => (
+                                    <Button
+                                      key={i}
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => openInIframe(mat.material_url)}
+                                    >
+                                      <FileText className="h-4 w-4 mr-1" /> {mat.material_title || "Open File"}
+                                    </Button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -618,14 +666,10 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {/* <DropdownMenuItem asChild>
-                                  <Link
-                                    href={`/admin/courses/${params.id}/chapters/${chapter._id}/lessons/${lesson._id}`}
-                                  >
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit Lesson
-                                  </Link>
-                                </DropdownMenuItem> */}
+                                <DropdownMenuItem onClick={() => handleEditLesson(lesson)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit Lesson
+                                </DropdownMenuItem>
                                 <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteLesson(chapter._id, lesson._id)}>
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Delete Lesson
@@ -648,7 +692,6 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
                     </div>
                   )}
 
-                  {/* Iframe Modal */}
                   <Dialog open={openModal} onOpenChange={setOpenModal}>
                     <DialogContent className="max-w-4xl h-[80vh]">
                       <DialogHeader>
@@ -680,6 +723,52 @@ export default function CourseChaptersPage({ params }: { params: { id: string } 
           </Button>
         </div>
       )}
+      {/* <Dialog open={isEditingLesson} onOpenChange={setIsEditingLesson}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Lesson</DialogTitle>
+            <DialogDescription>Update the lesson details and video notes.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Lesson Title</Label>
+              <Input
+                value={editingLesson?.title || ""}
+                onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={editingLesson?.description || ""}
+                onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Duration (minutes)</Label>
+              <Input
+                type="number"
+                value={editingLesson?.duration || ""}
+                onChange={(e) => setEditingLesson({ ...editingLesson, duration: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setIsEditingLesson(false)}>Cancel</Button>
+            <Button onClick={handleUpdateLesson} disabled={isUpdatingLesson}>
+              {isUpdatingLesson ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Updating…
+                </>
+              ) : (
+                <>
+                  <Edit className="h-4 w-4 mr-2" /> Update Lesson
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog> */}
     </div>
   )
 }

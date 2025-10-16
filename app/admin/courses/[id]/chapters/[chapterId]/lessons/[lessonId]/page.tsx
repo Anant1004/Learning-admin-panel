@@ -1,13 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, FileText, BookOpen, Paperclip, Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import { apiClient } from "@/lib/api";
+import axios from "axios";
 
 export default function EditLessonPage({
   params,
@@ -16,41 +21,61 @@ export default function EditLessonPage({
 }) {
   const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState("basic");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     duration: "",
-    video_url: "",
-    video_thumnail: "",
   });
-
+  const [videos, setVideos] = useState([{ video_url: "", video_thumbnail: "" }]);
+  const [isUploading, setIsUploading] = useState<any>({});
+  const [isPendingSubmit, setPendingSubmit] = useState(false);
   const [materials, setMaterials] = useState<
-    { material_type: string; material_title: string; material_url: string }[]
+    Array<{
+      material_type: "notes" | "pdf" | "assignment";
+      material_title: string;
+      file?: File;
+      url?: string;
+      public_id?: string;
+      material_url?: string; // fallback compatibility
+    }>
   >([]);
-
+  const [openDialogUrl, setOpenDialogUrl] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
-  // 🔹 Fetch lesson details on mount
+  // Fetch lesson details on mount and prefill
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiClient(
-          "GET",
-          `/lessons/${params.lessonId}`
-        );
-        if (res.ok) {
-          const lesson = res.lesson;
+        let res = await apiClient("GET", `/lesson/${params.lessonId}`);
+        if (!res?.ok) {
+          res = await apiClient("GET", `/lessons/${params.lessonId}`);
+        }
+        if (res?.ok) {
+          const lesson = res.lesson || res.data || res;
           setFormData({
             title: lesson.title || "",
             description: lesson.description || "",
             duration: String(lesson.duration || ""),
-            video_url: lesson.video_url || "",
-            video_thumnail: lesson.video_thumnail || "",
           });
+          if (Array.isArray(lesson.videos) && lesson.videos.length) {
+            setVideos(
+              lesson.videos.map((v: any) => ({
+                video_url: v.video_url || "",
+                video_thumbnail: v.video_thumbnail || v.video_thumnail || "",
+              }))
+            );
+          } else if (lesson.video_url || lesson.video_thumnail) {
+            setVideos([
+              {
+                video_url: lesson.video_url || "",
+                video_thumbnail: lesson.video_thumbnail || lesson.video_thumnail || "",
+              },
+            ]);
+          }
           setMaterials(lesson.materials || []);
         } else {
-          toast.error(res.message || "Failed to load lesson");
+          toast.error(res?.message || "Failed to load lesson");
         }
       } catch (err) {
         toast.error("Error loading lesson");
@@ -61,31 +86,140 @@ export default function EditLessonPage({
     })();
   }, [params.lessonId]);
 
-  // 🔹 Update lesson
-  const handleUpdate = async () => {
-    setSaving(true);
-    try {
-      const payload = {
-        ...formData,
-        duration: Number(formData.duration),
-        materials,
-      };
-      const res = await apiClient(
-        "PUT",
-        `/lessons/${params.lessonId}`,
-        payload
-      );
-      if (res.ok) {
-        toast.success("Lesson updated successfully");
-        router.push(`/admin/courses/${params.id}`);
-      } else {
-        toast.error(res.message || "Update failed");
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleVideoChange = (index: number, field: string, value: string) => {
+    setVideos((prev) => prev.map((v, i) => (i === index ? { ...v, [field]: value } : v)));
+  };
+
+  const addVideoField = () => {
+    setVideos((prev) => [...prev, { video_url: "", video_thumbnail: "" }]);
+  };
+
+  const removeVideoField = (index: number) => {
+    setVideos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const addMaterial = (material_type: "notes" | "pdf" | "assignment") => {
+    setMaterials((prev) => [...prev, { material_type, material_title: "" }]);
+  };
+
+  const updateMaterial = (index: number, field: string, value: string) => {
+    setMaterials((prev) => prev.map((material, i) => (i === index ? { ...material, [field]: value } : material)));
+  };
+
+  const removeMaterial = async (index: number) => {
+    const materialToRemove: any = materials[index];
+    if (materialToRemove?.public_id) {
+      try {
+        setIsUploading((prev: any) => ({ ...prev, [index]: true }));
+        await apiClient("POST", "/signature", { public_id: materialToRemove.public_id });
+      } catch {}
+      finally {
+        setIsUploading((prev: any) => ({ ...prev, [index]: false }));
       }
+    }
+    setMaterials((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleOpenImageDialog = (url: any) => setOpenDialogUrl(url);
+  const handleCloseDialog = () => setOpenDialogUrl(null);
+
+  const isValidYouTubeUrl = (url: any) => {
+    try {
+      const parsedUrl = new URL(url);
+      const host = parsedUrl.hostname.toLowerCase();
+      const validHosts = ["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.youtu.be"];
+      if (!validHosts.includes(host)) return false;
+      if (host.includes("youtu.be")) return parsedUrl.pathname.slice(1).length === 11;
+      const videoId = parsedUrl.searchParams.get("v");
+      return !!videoId && videoId.length === 11;
+    } catch {
+      return false;
+    }
+  };
+
+  const isValidUrl = (url: any) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleMaterialFile = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setPendingSubmit(true);
+      setIsUploading((prev: any) => ({ ...prev, [index]: true }));
+      const data = await apiClient("GET", "/signature");
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+      formDataUpload.append("api_key", data.apiKey);
+      formDataUpload.append("timestamp", data.timestamp);
+      formDataUpload.append("signature", data.signature);
+      formDataUpload.append("folder", data.folder);
+      const uploadRes = await axios.post(`https://api.cloudinary.com/v1_1/${data.cloudName}/auto/upload`, formDataUpload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setMaterials((prev) =>
+        prev.map((mat, i) =>
+          i === index ? { ...mat, file: file, url: uploadRes.data.secure_url, public_id: uploadRes.data.public_id } : mat
+        )
+      );
     } catch (err) {
-      console.error(err);
-      toast.error("Something went wrong");
+      console.log("Upload error:", err);
     } finally {
-      setSaving(false);
+      setIsUploading((prev: any) => ({ ...prev, [index]: false }));
+      setPendingSubmit(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (activeTab === "basic") {
+      if (formData.title.trim() && formData.description.trim() && formData.duration) setActiveTab("video");
+      else toast.error("Please Fill all fields of basic section!");
+    } else if (activeTab === "video") {
+      for (let v of videos) {
+        if (!v.video_url || !v.video_thumbnail) return toast.error("All video fields are required");
+        if (!isValidYouTubeUrl(v.video_url)) return toast.error("Invalid YouTube video URL");
+        if (!isValidUrl(v.video_thumbnail)) return toast.error("Invalid thumbnail URL");
+      }
+      setActiveTab("materials");
+    } else if (activeTab === "materials") {
+      if (materials.length > 0) {
+        try {
+          setPendingSubmit(true);
+          const body: any = {
+            title: formData.title,
+            description: formData.description,
+            duration: formData.duration,
+            videos,
+            materials,
+            chapterId: params.chapterId,
+            courseId: params.id,
+          };
+          let res = await apiClient("PUT", `/lesson/${params.lessonId}`, body);
+          if (!res?.ok) {
+            res = await apiClient("PUT", `/lessons/${params.lessonId}`, body);
+          }
+          if (res.ok) {
+            toast.success("Lesson updated successfully!");
+            router.push(`/admin/courses/${params.id}/chapters`);
+          } else {
+            toast.error(res.message || "Failed to update lesson");
+          }
+        } catch (error: any) {
+          toast.error("Error updating lesson");
+        } finally {
+          setPendingSubmit(false);
+        }
+      } else toast.error("Please upload notes, PDF, or assignment!");
     }
   };
 
@@ -98,110 +232,225 @@ export default function EditLessonPage({
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 p-4">
-      <h1 className="text-xl font-bold mb-4">Edit Lesson</h1>
-
-      <div>
-        <label className="block mb-1 font-medium">Title</label>
-        <Input
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-        />
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href={`/admin/courses/${params.id}/chapters`}>
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-3xl font-bold">Edit Lesson</h1>
+          <p className="text-muted-foreground">Update this lesson with videos and materials</p>
+        </div>
       </div>
 
-      <div>
-        <label className="block mb-1 font-medium">Description</label>
-        <Textarea
-          value={formData.description}
-          onChange={(e) =>
-            setFormData({ ...formData, description: e.target.value })
-          }
-        />
-      </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Tabs defaultValue="basic" className="space-y-6" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="basic">Basic Info</TabsTrigger>
+            <TabsTrigger value="video">Video Content</TabsTrigger>
+            <TabsTrigger value="materials">Materials</TabsTrigger>
+          </TabsList>
 
-      <div>
-        <label className="block mb-1 font-medium">Duration (minutes)</label>
-        <Input
-          type="number"
-          value={formData.duration}
-          onChange={(e) =>
-            setFormData({ ...formData, duration: e.target.value })
-          }
-        />
-      </div>
+          <TabsContent value="basic">
+            <Card>
+              <CardHeader>
+                <CardTitle>Lesson Information</CardTitle>
+                <CardDescription>Basic details about this lesson</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Lesson Title</Label>
+                  <Input value={formData.title} onChange={(e) => handleInputChange("title", e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    rows={4}
+                    value={formData.description}
+                    onChange={(e) => handleInputChange("description", e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Duration (minutes)</Label>
+                  <Input
+                    type="number"
+                    value={formData.duration}
+                    onChange={(e) => handleInputChange("duration", e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      <div>
-        <label className="block mb-1 font-medium">Video URL</label>
-        <Input
-          value={formData.video_url}
-          onChange={(e) =>
-            setFormData({ ...formData, video_url: e.target.value })
-          }
-        />
-      </div>
+          <TabsContent value="video" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Video Content</CardTitle>
+                <CardDescription>Add one or multiple video links</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {videos.map((video, index) => (
+                  <div key={index} className="border p-4 rounded-lg space-y-3 relative">
+                    <div className="space-y-2">
+                      <Label>Video URL</Label>
+                      <Input
+                        placeholder="YouTube or Vimeo URL"
+                        value={video.video_url}
+                        onChange={(e) => handleVideoChange(index, "video_url", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Video Thumbnail URL</Label>
+                      <Input
+                        placeholder="Thumbnail image URL"
+                        value={video.video_thumbnail}
+                        onChange={(e) => handleVideoChange(index, "video_thumbnail", e.target.value)}
+                      />
+                    </div>
+                    {videos.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => removeVideoField(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" onClick={addVideoField}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Another Video
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      <div>
-        <label className="block mb-1 font-medium">Video Thumbnail URL</label>
-        <Input
-          value={formData.video_thumnail}
-          onChange={(e) =>
-            setFormData({ ...formData, video_thumnail: e.target.value })
-          }
-        />
-      </div>
+          <TabsContent value="materials" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Lesson Materials</CardTitle>
+                <CardDescription>Add notes, PDFs, assignments, and other resources</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2 md:grid-cols-4">
+                  <Button type="button" variant="outline" onClick={() => addMaterial("notes")} className="justify-start">
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Add Notes
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => addMaterial("pdf")} className="justify-start">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Add PDF
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => addMaterial("assignment")} className="justify-start">
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Add Assignment
+                  </Button>
+                </div>
 
-      {/* Materials Section */}
-      <div>
-        <h2 className="font-semibold mt-4">Materials</h2>
-        {materials.map((mat, idx) => (
-          <div key={idx} className="flex gap-2 mt-2">
-            <Input
-              placeholder="Type (notes/pdf/assignment)"
-              value={mat.material_type}
-              onChange={(e) => {
-                const copy = [...materials];
-                copy[idx].material_type = e.target.value;
-                setMaterials(copy);
-              }}
-            />
-            <Input
-              placeholder="Title"
-              value={mat.material_title}
-              onChange={(e) => {
-                const copy = [...materials];
-                copy[idx].material_title = e.target.value;
-                setMaterials(copy);
-              }}
-            />
-            <Input
-              placeholder="URL"
-              value={mat.material_url}
-              onChange={(e) => {
-                const copy = [...materials];
-                copy[idx].material_url = e.target.value;
-                setMaterials(copy);
-              }}
-            />
-          </div>
-        ))}
-        <Button
-          variant="secondary"
-          className="mt-2"
-          onClick={() =>
-            setMaterials((prev) => [
-              ...prev,
-              { material_type: "", material_title: "", material_url: "" },
-            ])
-          }
-        >
-          Add Material
-        </Button>
-      </div>
+                {materials.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Added Materials</h4>
+                    {materials.map((material: any, index: number) => (
+                      <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                        {material.material_type === "notes" ? (
+                          <BookOpen className="h-4 w-4" />
+                        ) : material.material_type === "pdf" ? (
+                          <FileText className="h-4 w-4" />
+                        ) : (
+                          <Paperclip className="h-4 w-4" />
+                        )}
+                        <div className="flex-1">
+                          <Input
+                            placeholder={`${material.material_type?.charAt(0)?.toUpperCase() + (material.material_type || "").slice(1)} title`}
+                            value={material.material_title}
+                            onChange={(e) => updateMaterial(index, "material_title", e.target.value)}
+                          />
+                        </div>
 
-      <Button onClick={handleUpdate} disabled={saving} className="mt-6">
-        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Update Lesson
-      </Button>
+                        <div className="flex items-center space-x-4 my-2">
+                          {isUploading[index] ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Button type="button" variant="outline" size="sm">
+                              <input
+                                type="file"
+                                name="material_url"
+                                accept="application/pdf"
+                                className="w-8"
+                                onChange={(e) => handleMaterialFile(e, index)}
+                              />
+                              Upload File
+                            </Button>
+                          )}
+
+                          {(materials[index]?.file && materials[index]?.url) && (
+                            <>
+                              <span>{materials[index].file.name.slice(0, 3)}...</span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenImageDialog(materials[index].url)}
+                                className="ml-2 px-2 py-1 bg-blue-500 text-white rounded text-sm"
+                              >
+                                Open
+                              </button>
+                            </>
+                          )}
+                        </div>
+
+                        {openDialogUrl && (
+                          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white p-4 rounded shadow-lg max-w-3xl max-h-[90vh] overflow-auto">
+                              <button
+                                type="button"
+                                onClick={handleCloseDialog}
+                                className="mb-4 px-2 py-1 bg-red-500 text-white rounded"
+                              >
+                                Close
+                              </button>
+                              {openDialogUrl.endsWith(".pdf") ? (
+                                <iframe src={openDialogUrl} width="700vw" height="580px" title="PDF Preview" />
+                              ) : (
+                                <img src={openDialogUrl} alt="Material Preview" className="max-w-full max-h-[80vh] object-contain" />
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <Button type="button" variant="ghost" size="sm" onClick={() => removeMaterial(index)} className="text-destructive">
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {materials.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="mx-auto h-8 w-8 mb-2" />
+                    <p>No materials added yet</p>
+                    <p className="text-sm">Use the buttons above to add lesson materials</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex items-center justify-between border-t pt-6">
+          <Link href={`/admin/courses/${params.id}/chapters`}>
+            <Button variant="outline">Cancel</Button>
+          </Link>
+          <Button type="submit" disabled={isPendingSubmit}>
+            {activeTab === "basic" ? "Next To Video" : activeTab === "video" ? "Next To Materials" : "Update"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

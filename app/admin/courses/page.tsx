@@ -8,6 +8,16 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Users, Clock, BookOpen } from "lucide-react"
 import { FetchCourses } from "@/lib/function";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +47,9 @@ export default function CoursesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [courseToDelete, setCourseToDelete] = useState<any>(null)
+  const [deleting, setDeleting] = useState(false)
 
 
   const filteredCourses = courses.filter((course) => {
@@ -100,6 +113,20 @@ export default function CoursesPage() {
     // alert(id)
   }
 
+  const openConfirm = (course: any) => {
+    setCourseToDelete(course)
+    setConfirmOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!courseToDelete) return
+    setDeleting(true)
+    await handleDeleteCourse(courseToDelete)
+    setDeleting(false)
+    setConfirmOpen(false)
+    setCourseToDelete(null)
+  }
+
 
   return (
     <div className="space-y-6">
@@ -108,6 +135,23 @@ export default function CoursesPage() {
           <h1 className="text-3xl font-bold">Courses</h1>
           <p className="text-muted-foreground">Manage your course catalog and content</p>
         </div>
+
+    <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete course?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {`This will permanently delete "${courseToDelete?.title || "this course"}" and all related content. This action cannot be undone.`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDelete} disabled={deleting}>
+            {deleting ? "Deleting..." : "Delete"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
         <Link href="/admin/courses/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
@@ -197,7 +241,7 @@ export default function CoursesPage() {
                           Manage Content
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={()=>handleDeleteCourse(course)}>
+                      <DropdownMenuItem className="text-destructive" onClick={()=>openConfirm(course)}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Course
                       </DropdownMenuItem>

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import {useState } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -10,47 +10,47 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, FileText, BookOpen, PenTool, Paperclip, Loader2 } from "lucide-react"
+import { ArrowLeft, FileText, BookOpen, PenTool, Paperclip, Loader2, PlusCircle, Trash2 } from "lucide-react"
 import { apiClient } from "@/lib/api"
-import { toast } from "react-hot-toast";
+import { toast } from "react-hot-toast"
 import axios from "axios"
 
-export default function NewLessonPage({
-  params,
-}: {
-  params: { id: string; chapterId: string }
-}) {
+export default function NewLessonPage({ params }: { params: { id: string; chapterId: string } }) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState("basic");
+  const [activeTab, setActiveTab] = useState("basic")
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    // videoUrl: "",
     duration: "",
   })
-  const [videocontentformdata, setVideoContentFormData] = useState({
-    video_url: "",
-    video_thumnail: ""
-  })
-  const [isUploading, setIsUploading] = useState<any>({});
+  const [videos, setVideos] = useState([{ video_url: "", video_thumbnail: "" }])
+  const [isUploading, setIsUploading] = useState<any>({})
   const [isPendingSubmit, setPendingSubmit] = useState(false)
-
   const [materials, setMaterials] = useState<
     Array<{
       material_type: "notes" | "pdf" | "assignment"
       material_title: string
-      file?: File,
-      url?: string,
+      file?: File
+      url?: string
       public_id?: string
     }>
   >([])
-  const [openDialogUrl, setOpenDialogUrl] = useState<any>(null);
+  const [openDialogUrl, setOpenDialogUrl] = useState<any>(null)
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
-  const handleInputChangeVideo = (field: string, value: string) => {
-    setVideoContentFormData((prev) => ({ ...prev, [field]: value }))
+
+  const handleVideoChange = (index: number, field: string, value: string) => {
+    setVideos((prev) => prev.map((v, i) => (i === index ? { ...v, [field]: value } : v)))
+  }
+
+  const addVideoField = () => {
+    setVideos((prev) => [...prev, { video_url: "", video_thumbnail: "" }])
+  }
+
+  const removeVideoField = (index: number) => {
+    setVideos((prev) => prev.filter((_, i) => i !== index))
   }
 
   const addMaterial = (material_type: "notes" | "pdf" | "assignment") => {
@@ -62,31 +62,23 @@ export default function NewLessonPage({
   }
 
   const removeMaterial = async (index: number) => {
-    const materialToRemove = materials[index];
-
+    const materialToRemove = materials[index]
     if (materialToRemove?.public_id) {
       try {
-        setIsUploading((prev:any) => ({ ...prev, [index]: true }));
-        await apiClient("POST", "/signature", {
-          public_id: materialToRemove.public_id,
-        });
-
-      } catch (err) {
-        console.error("Cloudinary delete error:", err);
-      }
+        setIsUploading((prev: any) => ({ ...prev, [index]: true }))
+        await apiClient("POST", "/signature", { public_id: materialToRemove.public_id })
+      } catch {}
       finally {
-        setIsUploading((prev:any) => ({ ...prev, [index]: false }));
+        setIsUploading((prev: any) => ({ ...prev, [index]: false }))
       }
     }
-    setMaterials((prev) => prev.filter((_, i) => i !== index));
-  };
+    setMaterials((prev) => prev.filter((_, i) => i !== index))
+  }
 
   const getMaterialIcon = (type: string) => {
     switch (type) {
       case "notes":
         return <BookOpen className="h-4 w-4" />
-      case "dpp":
-        return <PenTool className="h-4 w-4" />
       case "pdf":
         return <FileText className="h-4 w-4" />
       case "assignment":
@@ -96,166 +88,102 @@ export default function NewLessonPage({
     }
   }
 
+  const handleOpenImageDialog = (url: any) => setOpenDialogUrl(url)
+  const handleCloseDialog = () => setOpenDialogUrl(null)
 
-  const handleOpenImageDialog = (url: any) => {
-  
-    setOpenDialogUrl(url);
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialogUrl(null);
-  };
-
-const isValidYouTubeUrl = (url: any) => {
-  try {
-    const parsedUrl = new URL(url);
-    const host = parsedUrl.hostname.toLowerCase();
-
-    const validHosts = [
-      "youtube.com",
-      "www.youtube.com",
-      "m.youtube.com",
-      "youtu.be",
-      "www.youtu.be"
-    ];
-
-    if (!validHosts.includes(host)) return false;
-
-    if (host.includes("youtu.be")) {
-      const id = parsedUrl.pathname.slice(1);
-      return id.length === 11;
+  const isValidYouTubeUrl = (url: any) => {
+    try {
+      const parsedUrl = new URL(url)
+      const host = parsedUrl.hostname.toLowerCase()
+      const validHosts = ["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.youtu.be"]
+      if (!validHosts.includes(host)) return false
+      if (host.includes("youtu.be")) return parsedUrl.pathname.slice(1).length === 11
+      const videoId = parsedUrl.searchParams.get("v")
+      return !!videoId && videoId.length === 11
+    } catch {
+      return false
     }
-
-    const videoId = parsedUrl.searchParams.get("v");
-    return !!videoId && videoId.length === 11;
-  } catch {
-    return false;
   }
-};
 
-const isValidUrl = (url: any) => {
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
+  const isValidUrl = (url: any) => {
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
   }
-};
 
   const handleMaterialFile = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+    const file = e.target.files?.[0]
+    if (!file) return
     try {
       setPendingSubmit(true)
-      setIsUploading((prev:any) => ({ ...prev, [index]: true }));
-      const data = await apiClient("GET", "/signature");
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("api_key", data.apiKey);
-      formData.append("timestamp", data.timestamp);
-      formData.append("signature", data.signature);
-      formData.append("folder", data.folder);
-
-      const uploadRes = await axios.post(
-        `https://api.cloudinary.com/v1_1/${data.cloudName}/auto/upload`,
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
-
+      setIsUploading((prev: any) => ({ ...prev, [index]: true }))
+      const data = await apiClient("GET", "/signature")
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("api_key", data.apiKey)
+      formData.append("timestamp", data.timestamp)
+      formData.append("signature", data.signature)
+      formData.append("folder", data.folder)
+      const uploadRes = await axios.post(`https://api.cloudinary.com/v1_1/${data.cloudName}/auto/upload`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
       setMaterials((prev) =>
         prev.map((mat, i) =>
           i === index ? { ...mat, file: file, url: uploadRes.data.secure_url, public_id: uploadRes.data.public_id } : mat
         )
-      );
-
+      )
     } catch (err) {
-      console.log("Upload error:", err);
+      console.log("Upload error:", err)
     } finally {
-      setIsUploading((prev:any) => ({ ...prev, [index]: false }));
+      setIsUploading((prev: any) => ({ ...prev, [index]: false }))
       setPendingSubmit(false)
     }
-  };
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+    e.preventDefault()
     if (activeTab === "basic") {
-      if (formData.title.trim() && formData.description.trim() && formData.duration) {
-        setActiveTab("video");
-      } else {
-        toast.error("Please Fill all fields of basic section!");
+      if (formData.title.trim() && formData.description.trim() && formData.duration) setActiveTab("video")
+      else toast.error("Please Fill all fields of basic section!")
+    } else if (activeTab === "video") {
+      for (let v of videos) {
+        if (!v.video_url || !v.video_thumbnail) return toast.error("All video fields are required")
+        if (!isValidYouTubeUrl(v.video_url)) return toast.error("Invalid YouTube video URL")
+        if (!isValidUrl(v.video_thumbnail)) return toast.error("Invalid thumbnail URL")
       }
-    }
-    else if (activeTab === "video") {
-      const videoUrl = videocontentformdata.video_url.trim();
-      const videoThumbnail = videocontentformdata.video_thumnail.trim();
-
-      if (!videoUrl || !videoThumbnail) {
-        toast.error("Both fields are required");
-        return;
-      }
-
-      if (!isValidYouTubeUrl(videoUrl)) {
-        toast.error("Please enter a valid YouTube video URL");
-        return;
-      }
-
-      if (!isValidUrl(videoThumbnail)) {
-        toast.error("Please enter a valid URL for video thumbnail");
-        return;
-      }
-
-      setActiveTab("materials");
-    }
-    else if (activeTab === "materials") {
+      setActiveTab("materials")
+    } else if (activeTab === "materials") {
       if (materials.length > 0) {
         try {
           const body = {
             title: formData.title,
             description: formData.description,
             duration: formData.duration,
-            video_url: videocontentformdata.video_url,
-            video_thumnail: videocontentformdata.video_thumnail,
+            videos,
             materials,
             chapterId: params.chapterId,
             courseId: params.id,
-          };
-
-          const res = await apiClient("POST", "/lesson", body);
+          }
+          const res = await apiClient("POST", "/lesson", body)
           if (res.ok) {
-            toast.success("Lesson is successfully created!");
-            setFormData({
-              title: "",
-              description: "",
-              duration: "",
-            });
-
-            setVideoContentFormData({
-              video_url: "",
-              video_thumnail: "",
-            });
-
-            setMaterials([]);
+            toast.success("Lesson created successfully!")
+            setFormData({ title: "", description: "", duration: "" })
+            setVideos([{ video_url: "", video_thumbnail: "" }])
+            setMaterials([])
             router.push(`/admin/courses/${params.id}/chapters`)
           }
         } catch (error: any) {
-          toast.error(error);
+          toast.error(error)
         }
-      } else {
-        toast.error("Please upload notes, PDF, or assignment!");
-      }
+      } else toast.error("Please upload notes, PDF, or assignment!")
     }
-  };
-
-
-
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Link href={`/admin/courses/${params.id}/chapters`}>
           <Button variant="ghost" size="icon">
@@ -263,8 +191,8 @@ const isValidUrl = (url: any) => {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-balance">Add New Lesson</h1>
-          <p className="text-muted-foreground">Create a new lesson with video content and materials</p>
+          <h1 className="text-3xl font-bold">Add New Lesson</h1>
+          <p className="text-muted-foreground">Create a new lesson with multiple videos and materials</p>
         </div>
       </div>
 
@@ -276,7 +204,7 @@ const isValidUrl = (url: any) => {
             <TabsTrigger value="materials">Materials</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="basic" className="space-y-6">
+          <TabsContent value="basic">
             <Card>
               <CardHeader>
                 <CardTitle>Lesson Information</CardTitle>
@@ -284,34 +212,22 @@ const isValidUrl = (url: any) => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Lesson Title</Label>
-                  <Input
-                    id="title"
-                    placeholder="Enter lesson title"
-                    value={formData.title}
-                    onChange={(e) => handleInputChange("title", e.target.value)}
-                    required
-                  />
+                  <Label>Lesson Title</Label>
+                  <Input value={formData.title} onChange={(e) => handleInputChange("title", e.target.value)} required />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label>Description</Label>
                   <Textarea
-                    id="description"
-                    placeholder="Describe what students will learn in this lesson"
                     rows={4}
                     value={formData.description}
                     onChange={(e) => handleInputChange("description", e.target.value)}
                     required
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (minutes)</Label>
+                  <Label>Duration (minutes)</Label>
                   <Input
-                    id="duration"
                     type="number"
-                    placeholder="15"
                     value={formData.duration}
                     onChange={(e) => handleInputChange("duration", e.target.value)}
                     required
@@ -325,29 +241,43 @@ const isValidUrl = (url: any) => {
             <Card>
               <CardHeader>
                 <CardTitle>Video Content</CardTitle>
-                <CardDescription>Upload or link to the lesson video</CardDescription>
+                <CardDescription>Add one or multiple video links</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="videoUrl">Video URL</Label>
-                  <Input
-                    id="video_url"
-                    placeholder="https://example.com/video.mp4 or YouTube/Vimeo URL"
-                    value={videocontentformdata.video_url}
-                    onChange={(e) => handleInputChangeVideo("video_url", e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="videoUrl">Video Thumnail URL</Label>
-                  <Input
-                    id="thumnail_url"
-                    placeholder="https://example.com/video.mp4 or YouTube/Vimeo URL"
-                    value={videocontentformdata.video_thumnail}
-                    onChange={(e) => handleInputChangeVideo("video_thumnail", e.target.value)}
-                  />
-                </div>
-
+                {videos.map((video, index) => (
+                  <div key={index} className="border p-4 rounded-lg space-y-3 relative">
+                    <div className="space-y-2">
+                      <Label>Video URL</Label>
+                      <Input
+                        placeholder="YouTube or Vimeo URL"
+                        value={video.video_url}
+                        onChange={(e) => handleVideoChange(index, "video_url", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Video Thumbnail URL</Label>
+                      <Input
+                        placeholder="Thumbnail image URL"
+                        value={video.video_thumbnail}
+                        onChange={(e) => handleVideoChange(index, "video_thumbnail", e.target.value)}
+                      />
+                    </div>
+                    {videos.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => removeVideoField(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" onClick={addVideoField}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Another Video
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -360,12 +290,7 @@ const isValidUrl = (url: any) => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-2 md:grid-cols-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => addMaterial("notes")}
-                    className="justify-start"
-                  >
+                  <Button type="button" variant="outline" onClick={() => addMaterial("notes")} className="justify-start">
                     <BookOpen className="mr-2 h-4 w-4" />
                     Add Notes
                   </Button>
@@ -407,7 +332,6 @@ const isValidUrl = (url: any) => {
                                 type="file"
                                 name="material_url"
                                 accept="application/pdf"
-                                // required
                                 className="w-8"
                                 onChange={(e) => handleMaterialFile(e, index)}
                               />
@@ -438,15 +362,8 @@ const isValidUrl = (url: any) => {
                               >
                                 Close
                               </button>
-
-                              {/* PDF or Image Display */}
-                              {openDialogUrl.endsWith('.pdf') ? (
-                                <iframe
-                                  src={openDialogUrl}
-                                  width="700vw"
-                                  height="580px"
-                                  title="PDF Preview"
-                                />
+                              {openDialogUrl.endsWith(".pdf") ? (
+                                <iframe src={openDialogUrl} width="700vw" height="580px" title="PDF Preview" />
                               ) : (
                                 <img
                                   src={openDialogUrl}
@@ -485,13 +402,12 @@ const isValidUrl = (url: any) => {
           </TabsContent>
         </Tabs>
 
-        {/* Action Buttons */}
         <div className="flex items-center justify-between border-t pt-6">
           <Link href={`/admin/courses/${params.id}/chapters`}>
             <Button variant="outline">Cancel</Button>
           </Link>
           <Button type="submit" disabled={isPendingSubmit}>
-            {activeTab == "basic" ? "Next To Video" : activeTab == "video" ? "Next To Materials" : "Submit"}
+            {activeTab === "basic" ? "Next To Video" : activeTab === "video" ? "Next To Materials" : "Submit"}
           </Button>
         </div>
       </form>

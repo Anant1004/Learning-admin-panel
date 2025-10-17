@@ -8,23 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Users, CheckCircle2, ShoppingCart } from "lucide-react"
+import { ArrowLeft, ShoppingCart } from "lucide-react"
 import { apiClient } from "@/lib/api"
-import { toast } from "react-hot-toast"
+import { Enrollment } from "@/types"
 
-interface EnrollmentUser {
-  _id: string
-  fullname?: string
-  email?: string
-}
 
-interface Enrollment {
-  _id: string
-  user: EnrollmentUser | string
-  status?: "enrolled" | "purchased" | string
-  purchasedAt?: string
-  enrolledAt?: string
-}
 
 export default function CourseEnrollmentsPage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -34,8 +22,7 @@ export default function CourseEnrollmentsPage({ params }: { params: { id: string
   
   const generateMock = (): Enrollment[] => {
     const names = [
-      "Aarav Sharma","Isha Patel","Kabir Singh","Diya Mehta","Advait Nair","Zoya Khan",
-      "Reyansh Gupta","Myra Joshi","Vivaan Iyer","Ananya Roy","Arjun Verma","Sara Desai"
+      "Aarav Sharma","Isha Patel","Kabir Singh"
     ]
     return names.map((n, i) => ({
       _id: `${i+1}`,

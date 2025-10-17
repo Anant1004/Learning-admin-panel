@@ -6,14 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Image as ImageIcon, Upload, Trash2 } from "lucide-react"
+import { Upload, Trash2 } from "lucide-react"
 import { saveBanner, deleteBanner, fetchBanners } from "@/lib/function"
-
-interface BannerItem {
-  _id?: string
-  image: string
-  url: string
-}
+import { BannerItem } from "@/types"
 
 function BannerForm({
   title,

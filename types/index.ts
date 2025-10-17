@@ -157,3 +157,23 @@ export interface ApiOk<T = unknown> {
   message?: string
   data?: T
 }
+
+export interface EnrollmentUser {
+  _id: string
+  fullname?: string
+  email?: string
+}
+
+export interface Enrollment {
+  _id: string
+  user: EnrollmentUser | string
+  status?: "enrolled" | "purchased" | string
+  purchasedAt?: string
+  enrolledAt?: string
+}
+
+export interface BannerItem {
+  _id?: string
+  image: string
+  url?: string
+}

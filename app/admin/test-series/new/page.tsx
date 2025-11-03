@@ -200,7 +200,7 @@ export default function NewTestSeriesPage() {
         const pdfUrl = uploadRes?.pdfUrl;
         if (!pdfUrl) throw new Error("No pdfUrl returned from upload");
 
-        const parseRes = await fetch("https://web-production-630c.up.railway.app/parse-pdf", {
+        const parseRes = await fetch("https://web-production-d4522.up.railway.app/parse-pdf", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pdfUrl }),

@@ -200,7 +200,7 @@ export default function NewTestSeriesPage() {
         const pdfUrl = uploadRes?.pdfUrl;
         if (!pdfUrl) throw new Error("No pdfUrl returned from upload");
 
-        const parseRes = await fetch("https://pdf-parsing-3e3i.onrender.com/parse-pdf", {
+        const parseRes = await fetch("https://pdf-parse-sbi1.onrender.com/parse-pdf", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pdfUrl }),

@@ -433,3 +433,8 @@ export const fetchChaptersByCourseId = async (id: string) => {
   const res = await apiClient("GET", `/course/${id}/chapters`);
   return res?.chapters || [];
 };
+
+export const fetchTestSeriesResults = async () => {
+  const res = await apiClient("GET", '/testResult');
+  return res?.results || [];
+};

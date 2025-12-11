@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Lock, Mail } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiClient } from "@/lib/api";
+import Image from "next/image";
 
 export default function HomePage() {
   const router = useRouter();
@@ -41,8 +42,9 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-2 text-center">
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
+        <CardHeader className="space-y-2 text-center place-items-center">
+          <Image src="./digital.jpg" alt="image" width={200} height={20}/>
+          <CardTitle className="text-2xl">Welcome To <br /> <span className="font-bold underline">DIGITAL GYAN KENDRA</span></CardTitle>
           <CardDescription>Sign in to access your dashboard</CardDescription>
         </CardHeader>
         <CardContent>

@@ -43,8 +43,8 @@ export default function HomePage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center place-items-center">
-          <Image src="./digital.jpg" alt="image" width={200} height={20}/>
-          <CardTitle className="text-2xl">Welcome To <br /> <span className="font-bold underline">DIGITAL GYAN KENDRA</span></CardTitle>
+          {/* <Image src="./digital.jpg" alt="image" width={200} height={20}/>
+          <CardTitle className="text-2xl">Welcome To <br /> <span className="font-bold underline">DIGITAL GYAN KENDRA</span></CardTitle> */}
           <CardDescription>Sign in to access your dashboard</CardDescription>
         </CardHeader>
         <CardContent>
